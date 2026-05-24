@@ -1,4 +1,4 @@
-# MyDesk - Daily Office Dashboard
+# Task Studio - Daily Office Dashboard
 
 A full-stack productivity dashboard with React frontend and Express backend, featuring JWT authentication and Google OAuth.
 
@@ -54,7 +54,7 @@ cp .env.example .env
 4. Edit `.env` with your configuration:
 ```env
 PORT=5000
-DATABASE_URL=postgres://postgres:password@localhost:5432/mydesk
+DATABASE_URL=postgres://postgres:password@localhost:5432/task_studio
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
 
@@ -68,7 +68,7 @@ CLIENT_URL=http://localhost:5173
 
 5. Create PostgreSQL database:
 ```sql
-CREATE DATABASE mydesk;
+CREATE DATABASE task_studio;
 ```
 
 6. Start the server:

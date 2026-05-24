@@ -17,7 +17,7 @@
   }
 }
 
-/* Custom Utilities for MyDesk */
+/* Custom Utilities for Task Studio */
 .glass-card {
   @apply bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl;
 }

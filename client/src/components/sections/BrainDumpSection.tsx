@@ -72,7 +72,7 @@ const BrainDumpSection = ({ brainDump, setBrainDump, currentTime, setTasks, task
           value={brainDump}
           onChange={(e) => {
             setBrainDump(e.target.value);
-            localStorage.setItem('mydesk_braindump', e.target.value);
+            localStorage.setItem('taskstudio_braindump', e.target.value);
           }}
         />
         <div className="flex justify-between items-center p-2">

@@ -2,7 +2,7 @@ module.exports = {
   development: {
     username: 'postgres',
     password: 'password',
-    database: 'mydesk_dev',
+    database: 'task_studio_dev',
     host: 'localhost',
     dialect: 'postgres'
   },

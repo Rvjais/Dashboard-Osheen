@@ -18,7 +18,7 @@ if (isProduction) {
   const path = require('path');
   const fs = require('fs');
   const dbDir = path.join(__dirname, '../../../DB');
-  const dbPath = path.join(dbDir, 'mydesk.db');
+  const dbPath = path.join(dbDir, 'taskstudio.db');
 
   // Create DB folder if doesn't exist
   if (!fs.existsSync(dbDir)) {

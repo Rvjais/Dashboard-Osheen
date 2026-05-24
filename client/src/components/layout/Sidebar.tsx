@@ -32,7 +32,7 @@ const Sidebar = ({ currentSection, setCurrentSection, session, storageUsed, hand
     <aside className="w-[240px] bg-brand-sidebar text-white fixed h-full flex flex-col z-50">
       <div className="p-8 border-b border-white/5">
         <h2 className="text-2xl font-display font-bold flex items-center gap-2">
-          MyDesk <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
+          Task Studio <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
         </h2>
       </div>
 

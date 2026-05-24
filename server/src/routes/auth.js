@@ -215,13 +215,13 @@ router.post('/forgot-password', async (req, res) => {
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'noreply@mydesk.com',
+        from: process.env.EMAIL_FROM || 'noreply@taskstudio.com',
         to: email,
-        subject: 'MyDesk - Password Reset Request',
+        subject: 'Task Studio - Password Reset Request',
         html: `
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
             <h2>Password Reset Request</h2>
-            <p>You requested a password reset for your MyDesk account.</p>
+            <p>You requested a password reset for your Task Studio account.</p>
             <p>
               <a href="${resetUrl}" 
                  style="display: inline-block; padding: 12px 24px; background: #EF4444; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">

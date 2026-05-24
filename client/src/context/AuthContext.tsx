@@ -22,15 +22,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const clearAuth = () => {
-    localStorage.removeItem('mydesk_token');
-    localStorage.removeItem('mydesk_user');
-    sessionStorage.removeItem('mydesk_token');
-    sessionStorage.removeItem('mydesk_user');
+    localStorage.removeItem('taskstudio_token');
+    localStorage.removeItem('taskstudio_user');
+    sessionStorage.removeItem('taskstudio_token');
+    sessionStorage.removeItem('taskstudio_user');
   };
 
   useEffect(() => {
-    const storedToken = sessionStorage.getItem('mydesk_token') || localStorage.getItem('mydesk_token');
-    const storedUser = sessionStorage.getItem('mydesk_user') || localStorage.getItem('mydesk_user');
+    const storedToken = sessionStorage.getItem('taskstudio_token') || localStorage.getItem('taskstudio_token');
+    const storedUser = sessionStorage.getItem('taskstudio_user') || localStorage.getItem('taskstudio_user');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authAPI.getMe()
         .then((res) => {
           setUser(res.data.user);
-          const storage = localStorage.getItem('mydesk_token') ? localStorage : sessionStorage;
-          storage.setItem('mydesk_user', JSON.stringify(res.data.user));
+          const storage = localStorage.getItem('taskstudio_token') ? localStorage : sessionStorage;
+          storage.setItem('taskstudio_user', JSON.stringify(res.data.user));
         })
         .catch(() => {
           clearAuth();
@@ -58,13 +58,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { user: userData, token: userToken } = response.data;
 
     const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem('mydesk_token', userToken);
-    storage.setItem('mydesk_user', JSON.stringify(userData));
+    storage.setItem('taskstudio_token', userToken);
+    storage.setItem('taskstudio_user', JSON.stringify(userData));
 
     // If not remembering, clear any existing localStorage copy
     if (!rememberMe) {
-      localStorage.removeItem('mydesk_token');
-      localStorage.removeItem('mydesk_user');
+      localStorage.removeItem('taskstudio_token');
+      localStorage.removeItem('taskstudio_user');
     }
 
     setToken(userToken);
@@ -75,8 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const response = await authAPI.register({ name, email, password, role });
     const { user: userData, token: userToken } = response.data;
 
-    localStorage.setItem('mydesk_token', userToken);
-    localStorage.setItem('mydesk_user', JSON.stringify(userData));
+    localStorage.setItem('taskstudio_token', userToken);
+    localStorage.setItem('taskstudio_user', JSON.stringify(userData));
 
     setToken(userToken);
     setUser(userData);
@@ -86,8 +86,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const response = await authAPI.googleLogin(idToken);
     const { user: userData, token: userToken } = response.data;
 
-    localStorage.setItem('mydesk_token', userToken);
-    localStorage.setItem('mydesk_user', JSON.stringify(userData));
+    localStorage.setItem('taskstudio_token', userToken);
+    localStorage.setItem('taskstudio_user', JSON.stringify(userData));
 
     setToken(userToken);
     setUser(userData);
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem('mydesk_user', JSON.stringify(updatedUser));
+    localStorage.setItem('taskstudio_user', JSON.stringify(updatedUser));
   };
 
   return (

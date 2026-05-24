@@ -13,8 +13,8 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, googleLogin } = useAuth();
-  const [email, setEmail] = useState('admin@mydesk.com');
-  const [password, setPassword] = useState('mydesk2024');
+  const [email, setEmail] = useState('admin@taskstudio.com');
+  const [password, setPassword] = useState('taskstudio2024');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,7 +79,7 @@ const LoginPage = () => {
         className="w-full max-w-md p-10 bg-white rounded-[28px] shadow-2xl relative z-10"
       >
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-display font-bold text-gray-900">MyDesk</h1>
+          <h1 className="text-4xl font-display font-bold text-gray-900">Task Studio</h1>
           <p className="text-gray-500 mt-2 font-medium">Your premium daily companion.</p>
         </div>
 

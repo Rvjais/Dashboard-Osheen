@@ -51,7 +51,7 @@ const ResetPasswordPage = () => {
         className="w-full max-w-md p-10 bg-white rounded-[28px] shadow-2xl relative z-10"
       >
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-display font-bold text-gray-900">MyDesk</h1>
+          <h1 className="text-4xl font-display font-bold text-gray-900">Task Studio</h1>
           <p className="text-gray-500 mt-2 font-medium">Reset your password</p>
         </div>
 

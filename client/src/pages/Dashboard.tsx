@@ -41,7 +41,7 @@ export default function Dashboard() {
   // Data States connected to Backend
   const queryClient = useQueryClient();
   const { user, login, logout, updateUser: updateAuthUser } = useAuth();
-  const session = { user: user || { id: '1', name: 'Admin', role: Role.ADMIN, avatarColor: '#000', email: 'admin@mydesk.com' } as User };
+  const session = { user: user || { id: '1', name: 'Admin', role: Role.ADMIN, avatarColor: '#000', email: 'admin@taskstudio.com' } as User };
 
   const handleLogin = async (email: string, pass: string, isAdmin: boolean) => {
     try {
@@ -240,10 +240,10 @@ export default function Dashboard() {
   };
 
   // Local storage states
-  const [brainDump, setBrainDump] = useState(() => localStorage.getItem('mydesk_braindump') || '');
+  const [brainDump, setBrainDump] = useState(() => localStorage.getItem('taskstudio_braindump') || '');
   const [homeWidgets, setHomeWidgets]
  = useState(() => {
-    const saved = localStorage.getItem('mydesk_home_widgets');
+    const saved = localStorage.getItem('taskstudio_home_widgets');
     return saved ? JSON.parse(saved) : [
       { id: 'welcome', span: 'lg:col-span-9', visible: true },
       { id: 'clock', span: 'lg:col-span-3', visible: true },
@@ -268,7 +268,7 @@ export default function Dashboard() {
       // Auto-clear brain dump at midnight
       if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) {
         setBrainDump('');
-        localStorage.setItem('mydesk_braindump', '');
+        localStorage.setItem('taskstudio_braindump', '');
       }
     }, 1000);
     return () => clearInterval(timer);
@@ -276,14 +276,14 @@ export default function Dashboard() {
 
   // Sync state to local storage
   useEffect(() => {
-    localStorage.setItem('mydesk_team', JSON.stringify(team));
-    localStorage.setItem('mydesk_tracker', JSON.stringify(tracker));
-    localStorage.setItem('mydesk_tasks', JSON.stringify(tasks));
-    localStorage.setItem('mydesk_tools', JSON.stringify(tools));
-    localStorage.setItem('mydesk_meetings', JSON.stringify(meetingNotes));
-    localStorage.setItem('mydesk_content', JSON.stringify(contentCalendar));
-    localStorage.setItem('mydesk_ideas', JSON.stringify(ideas));
-    localStorage.setItem('mydesk_home_widgets', JSON.stringify(homeWidgets));
+    localStorage.setItem('taskstudio_team', JSON.stringify(team));
+    localStorage.setItem('taskstudio_tracker', JSON.stringify(tracker));
+    localStorage.setItem('taskstudio_tasks', JSON.stringify(tasks));
+    localStorage.setItem('taskstudio_tools', JSON.stringify(tools));
+    localStorage.setItem('taskstudio_meetings', JSON.stringify(meetingNotes));
+    localStorage.setItem('taskstudio_content', JSON.stringify(contentCalendar));
+    localStorage.setItem('taskstudio_ideas', JSON.stringify(ideas));
+    localStorage.setItem('taskstudio_home_widgets', JSON.stringify(homeWidgets));
     setStorageUsed(calculateStorageSize());
     
     // Pulse saved indicator

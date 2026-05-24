@@ -9,13 +9,13 @@ const api = axios.create({
   },
 });
 
-const getToken = () => sessionStorage.getItem('mydesk_token') || localStorage.getItem('mydesk_token');
+const getToken = () => sessionStorage.getItem('taskstudio_token') || localStorage.getItem('taskstudio_token');
 
 const clearAuth = () => {
-  localStorage.removeItem('mydesk_token');
-  localStorage.removeItem('mydesk_user');
-  sessionStorage.removeItem('mydesk_token');
-  sessionStorage.removeItem('mydesk_user');
+  localStorage.removeItem('taskstudio_token');
+  localStorage.removeItem('taskstudio_user');
+  sessionStorage.removeItem('taskstudio_token');
+  sessionStorage.removeItem('taskstudio_user');
 };
 
 // Request interceptor to add auth token

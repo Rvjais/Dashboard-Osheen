@@ -130,14 +130,14 @@ const startServer = async () => {
       const userCount = await require('./models').User.count();
       if (userCount === 0) {
         await require('./models').User.bulkCreate([
-          { name: 'Admin', email: 'admin@mydesk.com', password: 'mydesk2024', role: 'admin' },
-          { name: 'James', email: 'james@mydesk.com', password: 'mydesk2024', role: 'employee' }
+          { name: 'Admin', email: 'admin@taskstudio.com', password: 'taskstudio2024', role: 'admin' },
+          { name: 'James', email: 'james@taskstudio.com', password: 'taskstudio2024', role: 'employee' }
         ], { individualHooks: true });
-        console.log('Default users seeded (admin@mydesk.com / mydesk2024)');
+        console.log('Default users seeded (admin@taskstudio.com / taskstudio2024)');
       }
     } catch (e) {
       // Table might not have all columns yet
-      console.log('Note: Could not seed users (old schema). Delete DB/mydesk.db and restart.');
+      console.log('Note: Could not seed users (old schema). Delete DB/taskstudio.db and restart.');
     }
 
     // Archive any completed items from previous days on startup

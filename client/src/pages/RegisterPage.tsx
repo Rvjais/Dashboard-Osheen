@@ -54,7 +54,7 @@ const RegisterPage = () => {
       >
         <div className="text-center mb-10">
           <h1 className="text-4xl font-display font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-2 font-medium">Join MyDesk and boost your productivity.</p>
+          <p className="text-gray-500 mt-2 font-medium">Join Task Studio and boost your productivity.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

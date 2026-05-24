@@ -25,7 +25,7 @@ export function formatDate(date: Date): string {
 export function calculateStorageSize(): number {
   let total = 0;
   for (const key in localStorage) {
-    if (key.startsWith('mydesk_')) {
+    if (key.startsWith('taskstudio_')) {
       const item = localStorage.getItem(key);
       if (item) {
         total += item.length * 2; // UTF-16
