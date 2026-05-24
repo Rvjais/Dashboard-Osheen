@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+.env
+.env.*
+*.local
+.DS_Store
+*.log
+uploads/
+DB/
+*.db
+credentials.json
+service-account.json
+*.pem
+*.key
+secrets/
