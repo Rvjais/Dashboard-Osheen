@@ -39,7 +39,9 @@ const ToolsSection = ({ tools, setTools }: ToolsSectionProps) => {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
               {tools.filter(t => t.category === cat).map(tool => (
                 <div key={tool.id} className="relative group">
-                  <button onClick={() => setTools(tools.filter(t => t.id !== tool.id))} className="absolute top-2 right-2 z-10 w-6 h-6 bg-white border border-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={12} /></button>
+                  {tool.category === 'Custom Tools' && (
+                    <button onClick={() => setTools(tools.filter(t => t.id !== tool.id))} className="absolute top-2 right-2 z-10 w-6 h-6 bg-white border border-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><X size={12} /></button>
+                  )}
                   <a 
                     href={tool.url} 
                     target="_blank" 
@@ -88,7 +90,7 @@ const ToolsSection = ({ tools, setTools }: ToolsSectionProps) => {
               domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
             } catch (e) {}
             const iconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            setTools([...tools, { id: Date.now().toString(), name, url, icon: iconUrl, category: 'Custom Tools' }]);
+            setTools([...tools, { id: crypto.randomUUID(), name, url, icon: iconUrl, category: 'Custom Tools' }]);
           }
         }}
         title="Add Custom Tool"

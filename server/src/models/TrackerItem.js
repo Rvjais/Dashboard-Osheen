@@ -44,7 +44,7 @@ const TrackerItem = sequelize.define('TrackerItem', {
     defaultValue: ''
   },
   attachment: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,
     allowNull: true
   },
   notes: {

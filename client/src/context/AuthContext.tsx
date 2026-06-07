@@ -102,7 +102,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem('taskstudio_user', JSON.stringify(updatedUser));
+    // Write to whichever storage holds the token (respects rememberMe choice)
+    const storage = localStorage.getItem('taskstudio_token') ? localStorage : sessionStorage;
+    storage.setItem('taskstudio_user', JSON.stringify(updatedUser));
   };
 
   return (

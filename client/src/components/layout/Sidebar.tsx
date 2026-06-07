@@ -29,14 +29,14 @@ const Sidebar = ({ currentSection, setCurrentSection, session, storageUsed, hand
   ];
 
   return (
-    <aside className="w-[240px] bg-brand-sidebar text-white fixed h-full flex flex-col z-50">
+    <aside className="w-[18rem] bg-brand-sidebar text-white fixed h-full flex flex-col z-50">
       <div className="p-8 border-b border-white/5">
         <h2 className="text-2xl font-display font-bold flex items-center gap-2">
           Task Studio <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
         </h2>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
         {items.map(item => (
           <div
             key={item.id}
@@ -44,7 +44,7 @@ const Sidebar = ({ currentSection, setCurrentSection, session, storageUsed, hand
             className={cn("sidebar-item", currentSection === item.id && "sidebar-item-active")}
           >
             <item.icon size={18} />
-            <span className="text-sm">{item.label}</span>
+            <span className="text-xl font-sapphire tracking-wide">{item.label}</span>
             {currentSection === item.id && <motion.div layoutId="active-pill" className="ml-auto w-1 h-4 bg-brand-accent rounded-full" />}
           </div>
         ))}

@@ -5,7 +5,7 @@ interface ChatParams {
 
 export const analyzeBrainDump = async (text: string) => {
   try {
-    const token = localStorage.getItem('taskstudio_token');
+    const token = sessionStorage.getItem('taskstudio_token') || localStorage.getItem('taskstudio_token');
     const response = await fetch('/api/gemini/analyze-braindump', {
       method: 'POST',
       headers: {
@@ -30,7 +30,7 @@ export const analyzeBrainDump = async (text: string) => {
 
 export const chatWithAI = async (params: ChatParams) => {
   try {
-    const token = localStorage.getItem('taskstudio_token');
+    const token = sessionStorage.getItem('taskstudio_token') || localStorage.getItem('taskstudio_token');
     const response = await fetch('/api/gemini/chat', {
       method: 'POST',
       headers: {

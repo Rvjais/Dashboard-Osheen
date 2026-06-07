@@ -1,4 +1,5 @@
 require('dotenv').config();
+const rateLimit = require('express-rate-limit');
 
 const express = require('express');
 const path = require('path');
@@ -29,6 +30,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP to 200 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // stricter limit for auth endpoints
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later.' }
+});
+app.use('/api', apiLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
 // Request logging
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -51,7 +72,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Error handling middleware
+// Error handling middleware (must be before 404 handler and have 4 params)
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
   res.status(err.status || 500).json({
@@ -59,7 +80,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler (must be last)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
@@ -99,6 +120,11 @@ const scheduleDailyArchive = () => {
 // Database sync and server start
 const startServer = async () => {
   try {
+    // Guard against insecure JWT secret in production
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'default-secret') {
+      console.warn('\n⚠️  WARNING: JWT_SECRET is not set or is using the default. Set a strong secret in .env for production!\n');
+    }
+
     // Sync database (creates tables if they don't exist)
     await sequelize.sync({ alter: false });
 
@@ -129,15 +155,16 @@ const startServer = async () => {
     try {
       const userCount = await require('./models').User.count();
       if (userCount === 0) {
+        const seedPassword = process.env.ADMIN_SEED_PASSWORD || ('seed_' + require('crypto').randomBytes(8).toString('hex'));
         await require('./models').User.bulkCreate([
-          { name: 'Admin', email: 'admin@taskstudio.com', password: 'taskstudio2024', role: 'admin' },
-          { name: 'James', email: 'james@taskstudio.com', password: 'taskstudio2024', role: 'employee' }
+          { name: 'Admin', email: process.env.ADMIN_SEED_EMAIL || 'admin@taskstudio.com', password: seedPassword, role: 'admin' },
         ], { individualHooks: true });
-        console.log('Default users seeded (admin@taskstudio.com / taskstudio2024)');
+        console.log(`Default admin seeded (email: ${process.env.ADMIN_SEED_EMAIL || 'admin@taskstudio.com'}, password: ${seedPassword})`);
+        console.log('⚠️  Change this password immediately after first login!');
       }
     } catch (e) {
       // Table might not have all columns yet
-      console.log('Note: Could not seed users (old schema). Delete DB/taskstudio.db and restart.');
+      console.log('Note: Could not seed users. Delete DB and restart if needed.');
     }
 
     // Archive any completed items from previous days on startup

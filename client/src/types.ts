@@ -36,7 +36,6 @@ export interface User {
   name: string;
   role: Role;
   email: string;
-  password?: string;
   avatarColor: string;
   avatar?: string;
   mood?: string;

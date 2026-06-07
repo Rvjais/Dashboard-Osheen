@@ -56,7 +56,7 @@ const BrainDumpSection = ({ brainDump, setBrainDump, currentTime, setTasks, task
           onClick={() => {
             const firstLine = brainDump.split('\n')[0];
             if (firstLine) {
-               setTasks([{ id: Date.now().toString(), title: firstLine, priority: TaskPriority.MEDIUM, assigneeId: session?.user.id || '', done: false, dueDate: format(new Date(), 'yyyy-MM-dd') }, ...tasks]);
+               setTasks([{ id: crypto.randomUUID(), title: firstLine, priority: TaskPriority.MEDIUM, assigneeId: session?.user.id || '', done: false, dueDate: format(new Date(), 'yyyy-MM-dd') }, ...tasks]);
                setCaptureAlert(true);
             }
           }}

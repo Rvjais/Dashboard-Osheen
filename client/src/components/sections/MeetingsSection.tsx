@@ -27,7 +27,7 @@ const MeetingsSection = ({ meetingNotes, setMeetingNotes }: MeetingsSectionProps
           <p className="text-sm text-gray-500 mt-1">Capture decisions and follow-up actions instantly.</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => {
-          const newNote: MeetingNote = { id: Date.now().toString(), title: 'Untitled Meeting', date: new Date().toISOString(), type: 'Sync', attendees: [], notes: '', actionItems: '', link: '' };
+          const newNote: MeetingNote = { id: crypto.randomUUID(), title: 'Untitled Meeting', date: new Date().toISOString().split('T')[0], type: 'Sync', attendees: [], notes: '', actionItems: '', link: '' };
           setMeetingNotes([newNote, ...meetingNotes]);
           setActiveNoteId(newNote.id);
         }}><Plus size={16} /> New Note</Button>

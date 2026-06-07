@@ -32,7 +32,7 @@ const IdeasWidget = ({ ideas, setIdeas }: IdeasWidgetProps) => {
         open={showPrompt}
         onClose={() => setShowPrompt(false)}
         onSubmit={(value) => {
-          setIdeas([...ideas, { id: Date.now().toString(), text: value, category: 'General', date: new Date().toISOString() }]);
+          setIdeas([...ideas, { id: crypto.randomUUID(), text: value, category: 'General', date: new Date().toISOString() }]);
         }}
         title="New Idea"
         placeholder="Enter your idea..."

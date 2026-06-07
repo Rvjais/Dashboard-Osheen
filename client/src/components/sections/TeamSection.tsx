@@ -9,14 +9,14 @@ import { Role, User } from '../../types';
 
 interface TeamSectionProps {
   team: User[];
-  onAddMember: (u: Partial<User>) => void;
+  onAddMember: (u: { name?: string; email?: string; password?: string; role?: Role }) => void;
   onDeleteMember: (id: string) => void;
   onMessageMember?: (memberId: string) => void;
 }
 
 const TeamSection = ({ team, onAddMember, onDeleteMember, onMessageMember }: TeamSectionProps) => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newMember, setNewMember] = useState<Partial<User>>({ name: '', role: Role.EMPLOYEE, email: '', password: '' });
+  const [newMember, setNewMember] = useState<{ name?: string; email?: string; password?: string; role?: Role }>({ name: '', role: Role.EMPLOYEE, email: '', password: '' });
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
 
   return (

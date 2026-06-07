@@ -1,13 +1,13 @@
-module.exports = {
-  development: {
-    username: 'postgres',
-    password: 'password',
-    database: 'task_studio_dev',
-    host: 'localhost',
-    dialect: 'postgres'
+{
+  "development": {
+    "username": "postgres",
+    "password": "password",
+    "database": "task_studio_dev",
+    "host": "localhost",
+    "dialect": "postgres"
   },
-  production: {
-    dialect: 'postgres',
-    logging: false
+  "production": {
+    "dialect": "postgres",
+    "logging": false
   }
-};
+}

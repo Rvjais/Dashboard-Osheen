@@ -112,7 +112,7 @@ const MessagesSection = ({ session, team }: MessagesSectionProps) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-140px)] -m-[28px] overflow-hidden">
+    <div className="flex h-[calc(100vh-140px)] -m-8 overflow-hidden">
       <div className="w-[320px] bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-100">
           <h2 className="text-lg font-display font-bold mb-3">Messages</h2>

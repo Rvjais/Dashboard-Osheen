@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
 // Register with email/password
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role = 'employee' } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
@@ -31,12 +31,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Create user
+    // Create user — public registration is always 'employee'
     const user = await User.create({
       name,
       email,
       password,
-      role: role === 'admin' ? 'admin' : 'employee'
+      role: 'employee'
     });
 
     // Generate token

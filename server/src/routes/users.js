@@ -19,7 +19,7 @@ const uploadAvatar = multer({ storage: avatarStorage, limits: { fileSize: 5 * 10
 router.get('/team', auth, async (req, res) => {
   try {
     const users = await User.findAll({
-      where: { role: 'employee' },
+      where: { isActive: true },
       attributes: { exclude: ['password', 'googleAccessToken'] },
       order: [['createdAt', 'DESC']]
     });

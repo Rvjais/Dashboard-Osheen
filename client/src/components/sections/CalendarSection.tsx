@@ -10,9 +10,10 @@ interface CalendarSectionProps {
   setContentCalendar: (items: ContentItem[]) => void;
   tasks: Task[];
   meetingNotes: MeetingNote[];
+  session: { user: { id: string } };
 }
 
-const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNotes }: CalendarSectionProps) => {
+const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNotes, session }: CalendarSectionProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
@@ -93,7 +94,7 @@ const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNo
               )} onClick={() => {
                 const title = prompt(`Add content for ${format(day, 'MMM dd, yyyy')}:`);
                 if (title) {
-                  setContentCalendar([...contentCalendar, { id: Date.now().toString(), title, publishDate: day.toISOString(), platform: 'Twitter', type: 'Post', creatorId: '1', stage: 'Draft', link: '', goal: '', caption: '', notes: '' }]);
+                  setContentCalendar([...contentCalendar, { id: crypto.randomUUID(), title, publishDate: format(day, 'yyyy-MM-dd'), platform: 'Twitter', type: 'Post', creatorId: session.user.id, stage: 'Draft', link: '', goal: '', caption: '', notes: '' }]);
                 }
               }}>
                  <div className="flex justify-between items-start">

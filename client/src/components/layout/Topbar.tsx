@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Bell, Plus, Sparkles, ChevronDown, LogOut, Camera } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -23,6 +23,19 @@ const Topbar = ({ currentSection, savedIndicator, showAIAssistant, setShowAIAssi
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // BUG 15 FIX: Click-outside handler for user menu
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,7 +96,7 @@ const Topbar = ({ currentSection, savedIndicator, showAIAssistant, setShowAIAssi
           <span className="hidden md:inline text-[10px] font-bold uppercase tracking-widest">AI Companion</span>
         </Button>
         <div className="w-[1px] h-4 bg-gray-200 mx-2" />
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-1 hover:bg-gray-100 p-1 px-2 rounded-lg transition-colors">
             {user?.avatar ? (
               <img src={user.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />

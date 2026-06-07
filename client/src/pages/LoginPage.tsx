@@ -13,8 +13,8 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, googleLogin } = useAuth();
-  const [email, setEmail] = useState('admin@taskstudio.com');
-  const [password, setPassword] = useState('taskstudio2024');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

@@ -57,6 +57,34 @@ router.get('/conversations', auth, async (req, res) => {
   }
 });
 
+// Get unread count — MUST be before /:userId to avoid route shadowing
+router.get('/unread/count', auth, async (req, res) => {
+  try {
+    const count = await Message.count({
+      where: { receiverId: req.userId, read: false }
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Unread count error:', error);
+    res.status(500).json({ error: 'Failed to get unread count' });
+  }
+});
+
+// Get room/group messages — MUST be before /:userId to avoid route shadowing
+router.get('/room/:roomId', auth, async (req, res) => {
+  try {
+    const messages = await Message.findAll({
+      where: { roomId: req.params.roomId },
+      order: [['createdAt', 'ASC']],
+      limit: 200
+    });
+    res.json({ messages });
+  } catch (error) {
+    console.error('Get room messages error:', error);
+    res.status(500).json({ error: 'Failed to get room messages' });
+  }
+});
+
 // Get messages with a specific user (1-on-1, exclude room messages)
 router.get('/:userId', auth, async (req, res) => {
   try {
@@ -116,34 +144,6 @@ router.post('/', auth, async (req, res) => {
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ error: 'Failed to send message' });
-  }
-});
-
-// Get unread count
-router.get('/unread/count', auth, async (req, res) => {
-  try {
-    const count = await Message.count({
-      where: { receiverId: req.userId, read: false }
-    });
-    res.json({ count });
-  } catch (error) {
-    console.error('Unread count error:', error);
-    res.status(500).json({ error: 'Failed to get unread count' });
-  }
-});
-
-// Get room/group messages
-router.get('/room/:roomId', auth, async (req, res) => {
-  try {
-    const messages = await Message.findAll({
-      where: { roomId: req.params.roomId },
-      order: [['createdAt', 'ASC']],
-      limit: 200
-    });
-    res.json({ messages });
-  } catch (error) {
-    console.error('Get room messages error:', error);
-    res.status(500).json({ error: 'Failed to get room messages' });
   }
 });
 

@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../context/AuthContext';
-import { usersAPI, trackerAPI, tasksAPI, meetingsAPI, contentAPI } from '../services/api';
+import { usersAPI, trackerAPI, tasksAPI, meetingsAPI, contentAPI, messagesAPI } from '../services/api';
 
 import { Role, Section, User } from '../types';
 import { INITIAL_TOOLS, getDailyBrief } from '../constants';
@@ -57,7 +58,7 @@ export default function Dashboard() {
     queryKey: ['users'], 
     queryFn: () => usersAPI.getTeam().then(res => res.data),
   });
-  const team = Array.isArray(teamData) ? teamData : (teamData?.team || teamData?.users || []);
+  const team = Array.isArray(teamData) ? teamData : (teamData?.users || teamData?.team || []);
   const teamMutation = useMutation({
     mutationFn: (args: { action: 'add' | 'delete', id?: string, data?: any }) => {
       if (args.action === 'add') return usersAPI.addTeamMember(args.data!);
@@ -70,7 +71,7 @@ export default function Dashboard() {
 
   // Tracker
   const { data: trackerData } = useQuery({ queryKey: ['tracker'], queryFn: () => trackerAPI.getAll().then(res => res.data) });
-  const tracker = Array.isArray(trackerData) ? trackerData : (trackerData?.tracker || trackerData?.items || []);
+  const tracker = Array.isArray(trackerData) ? trackerData : (trackerData?.items || trackerData?.tracker || []);
   const trackerMutation = useMutation({
     mutationFn: (args: { action: 'create' | 'update' | 'delete', id?: string, data?: any }) => {
       if (args.action === 'create') return trackerAPI.create(args.data!);
@@ -84,17 +85,17 @@ export default function Dashboard() {
      queryClient.setQueryData(['tracker'], updated);
      
      if (updated.length > tracker.length) {
-        const added = updated.find((t: any) => !tracker.some((old: any) => old.id === t.id));
-        if (added) trackerMutation.mutate({ action: 'create', data: added });
+        const added = updated.filter((t: any) => !tracker.some((old: any) => old.id === t.id));
+        added.forEach((a: any) => trackerMutation.mutate({ action: 'create', data: a }));
      } else if (updated.length < tracker.length) {
-        const deleted = tracker.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) trackerMutation.mutate({ action: 'delete', id: deleted.id });
+        const deleted = tracker.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+        deleted.forEach((d: any) => trackerMutation.mutate({ action: 'delete', id: d.id }));
      } else {
-        const changed = updated.find((t: any) => {
+        const changed = updated.filter((t: any) => {
            const old = tracker.find((o: any) => o.id === t.id);
            return old && JSON.stringify(old) !== JSON.stringify(t);
         });
-        if (changed) trackerMutation.mutate({ action: 'update', id: changed.id, data: changed });
+        changed.forEach((c: any) => trackerMutation.mutate({ action: 'update', id: c.id, data: c }));
      }
   };
 
@@ -115,30 +116,30 @@ export default function Dashboard() {
      queryClient.setQueryData(['tasks'], updated);
      
      if (updated.length > tasks.length) {
-        const added = updated.find((t: any) => !tasks.some((old: any) => old.id === t.id));
-        if (added) tasksMutation.mutate({ action: 'create', data: added });
+        const added = updated.filter((t: any) => !tasks.some((old: any) => old.id === t.id));
+        added.forEach((a: any) => tasksMutation.mutate({ action: 'create', data: a }));
      } else if (updated.length < tasks.length) {
-        const deleted = tasks.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) tasksMutation.mutate({ action: 'delete', id: deleted.id });
+        const deleted = tasks.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+        deleted.forEach((d: any) => tasksMutation.mutate({ action: 'delete', id: d.id }));
      } else {
-        const changed = updated.find((t: any) => {
+        const changed = updated.filter((t: any) => {
            const old = tasks.find((o: any) => o.id === t.id);
-           return old && (old.done !== t.done || old.title !== t.title);
+           return old && (old.done !== t.done || old.title !== t.title || old.priority !== t.priority);
         });
-        if (changed) {
-           const old = tasks.find((o: any) => o.id === changed.id);
-           if (old && old.done !== changed.done) {
-              tasksMutation.mutate({ action: 'toggle', id: changed.id });
+        changed.forEach((c: any) => {
+           const old = tasks.find((o: any) => o.id === c.id);
+           if (old && old.done !== c.done) {
+              tasksMutation.mutate({ action: 'toggle', id: c.id });
            } else {
-              tasksMutation.mutate({ action: 'update', id: changed.id, data: changed });
+              tasksMutation.mutate({ action: 'update', id: c.id, data: c });
            }
-        }
+        });
      }
   };
 
   // Meetings
   const { data: meetingsData } = useQuery({ queryKey: ['meetings'], queryFn: () => meetingsAPI.getAll().then(res => res.data) });
-  const meetingNotes = Array.isArray(meetingsData) ? meetingsData : (meetingsData?.meetings || meetingsData?.notes || []);
+  const meetingNotes = Array.isArray(meetingsData) ? meetingsData : (meetingsData?.notes || meetingsData?.meetings || []);
   const meetingsMutation = useMutation({
     mutationFn: (args: { action: 'create' | 'update' | 'delete', id?: string, data?: any }) => {
       if (args.action === 'create') return meetingsAPI.create(args.data!);
@@ -152,17 +153,17 @@ export default function Dashboard() {
      queryClient.setQueryData(['meetings'], updated);
      
      if (updated.length > meetingNotes.length) {
-        const added = updated.find((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
-        if (added) meetingsMutation.mutate({ action: 'create', data: added });
+        const added = updated.filter((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
+        added.forEach((a: any) => meetingsMutation.mutate({ action: 'create', data: a }));
      } else if (updated.length < meetingNotes.length) {
-        const deleted = meetingNotes.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) meetingsMutation.mutate({ action: 'delete', id: deleted.id });
+        const deleted = meetingNotes.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+        deleted.forEach((d: any) => meetingsMutation.mutate({ action: 'delete', id: d.id }));
      } else {
-        const changed = updated.find((t: any) => {
+        const changed = updated.filter((t: any) => {
            const old = meetingNotes.find((o: any) => o.id === t.id);
            return old && JSON.stringify(old) !== JSON.stringify(t);
         });
-        if (changed) meetingsMutation.mutate({ action: 'update', id: changed.id, data: changed });
+        changed.forEach((c: any) => meetingsMutation.mutate({ action: 'update', id: c.id, data: c }));
      }
   };
 
@@ -212,7 +213,7 @@ export default function Dashboard() {
 
   // Content
   const { data: contentData } = useQuery({ queryKey: ['contentItems'], queryFn: () => contentAPI.getContentItems().then(res => res.data) });
-  const contentCalendar = Array.isArray(contentData) ? contentData : (contentData?.contentItems || contentData?.content || []);
+  const contentCalendar = Array.isArray(contentData) ? contentData : (contentData?.items || contentData?.contentItems || contentData?.content || []);
   const contentMutation = useMutation({
     mutationFn: (args: { action: 'create' | 'update' | 'delete', id?: string, data?: any }) => {
       if (args.action === 'create') return contentAPI.createContentItem(args.data!);
@@ -225,17 +226,17 @@ export default function Dashboard() {
      const updated = typeof newContent === 'function' ? newContent(contentCalendar) : newContent;
      queryClient.setQueryData(['contentItems'], updated);
      if (updated.length > contentCalendar.length) {
-        const added = updated.find((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
-        if (added) contentMutation.mutate({ action: 'create', data: added });
+        const added = updated.filter((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
+        added.forEach((a: any) => contentMutation.mutate({ action: 'create', data: a }));
      } else if (updated.length < contentCalendar.length) {
-        const deleted = contentCalendar.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) contentMutation.mutate({ action: 'delete', id: deleted.id });
+        const deleted = contentCalendar.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+        deleted.forEach((d: any) => contentMutation.mutate({ action: 'delete', id: d.id }));
      } else {
-        const changed = updated.find((t: any) => {
+        const changed = updated.filter((t: any) => {
            const old = contentCalendar.find((o: any) => o.id === t.id);
            return old && JSON.stringify(old) !== JSON.stringify(t);
         });
-        if (changed) contentMutation.mutate({ action: 'update', id: changed.id, data: changed });
+        changed.forEach((c: any) => contentMutation.mutate({ action: 'update', id: c.id, data: c }));
      }
   };
 
@@ -257,6 +258,14 @@ export default function Dashboard() {
   const [storageUsed, setStorageUsed] = useState(calculateStorageSize());
   const [savedIndicator, setSavedIndicator] = useState(false);
 
+  // Unread Messages Count
+  const { data: unreadData } = useQuery({ 
+    queryKey: ['unreadCount'], 
+    queryFn: () => messagesAPI.getUnreadCount().then(res => res.data),
+    refetchInterval: 10000 
+  });
+  const unreadCount = unreadData?.count || 0;
+
   // --- Effects ---
   
   // Clock
@@ -274,23 +283,18 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Sync state to local storage
+  // Sync state to local storage (debounced to avoid excessive writes — BUG 17 fix)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem('taskstudio_team', JSON.stringify(team));
-    localStorage.setItem('taskstudio_tracker', JSON.stringify(tracker));
-    localStorage.setItem('taskstudio_tasks', JSON.stringify(tasks));
-    localStorage.setItem('taskstudio_tools', JSON.stringify(tools));
-    localStorage.setItem('taskstudio_meetings', JSON.stringify(meetingNotes));
-    localStorage.setItem('taskstudio_content', JSON.stringify(contentCalendar));
-    localStorage.setItem('taskstudio_ideas', JSON.stringify(ideas));
-    localStorage.setItem('taskstudio_home_widgets', JSON.stringify(homeWidgets));
-    setStorageUsed(calculateStorageSize());
-    
-    // Pulse saved indicator
-    setSavedIndicator(true);
-    const timeout = setTimeout(() => setSavedIndicator(false), 1000);
-    return () => clearTimeout(timeout);
-  }, [team, tracker, tasks, tools, meetingNotes, contentCalendar, ideas, homeWidgets]);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      localStorage.setItem('taskstudio_home_widgets', JSON.stringify(homeWidgets));
+      setStorageUsed(calculateStorageSize());
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 1000);
+    }, 500);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [homeWidgets]);
 
   // Focus Timer
   useEffect(() => {
@@ -339,7 +343,7 @@ export default function Dashboard() {
     return Math.round(tasksDonePoints + moodPoints + contentPoints + ideaPoints);
   }, [tasks, session?.user, contentCalendar, ideas]);
 
-  const dailyBrief = useMemo(() => getDailyBrief(currentTime.getHours()), []);
+  const dailyBrief = useMemo(() => getDailyBrief(currentTime.getHours()), [currentTime]);
 
 
   // --- Handlers ---
@@ -383,7 +387,7 @@ export default function Dashboard() {
       );
       case Section.TRACKER: return <TrackerSection tracker={tracker} setTracker={setTracker} session={session} team={team} setFocusMode={setFocusMode} setCurrentSection={setCurrentSection} />;
 
-      case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tasks={tasks} meetingNotes={meetingNotes} />;
+      case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tasks={tasks} meetingNotes={meetingNotes} session={session} />;
 
       case Section.BRAINDUMP: return <BrainDumpSection brainDump={brainDump} setBrainDump={setBrainDump} currentTime={currentTime} setTasks={setTasks} tasks={tasks} session={session} />;
       case Section.REPORTS: return <ReportsSection team={team} tasks={tasks} />;
@@ -391,17 +395,8 @@ export default function Dashboard() {
         <TeamSection 
           team={team} 
           onAddMember={(u) => {
-            const newUser: User = {
-              id: Date.now().toString(),
-              name: u.name || '',
-              role: u.role || Role.EMPLOYEE,
-              email: u.email || '',
-              password: u.password || '',
-              avatarColor: ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'][Math.floor(Math.random() * 5)],
-              capacity: 0,
-              status: 'Active'
-            };
-            teamMutation.mutate({ action: 'add', data: newUser });
+            // BUG 8 FIX: Only send fields the server accepts
+            teamMutation.mutate({ action: 'add', data: { name: u.name, email: u.email, password: u.password, role: u.role || 'employee' } });
           }} 
           onDeleteMember={(id) => setDeleteConfirmId(id)}
           onMessageMember={(id) => setCurrentSection(Section.MESSAGES)}
@@ -417,19 +412,25 @@ export default function Dashboard() {
   const notifs = useMemo(() => {
     const notificationsList = [];
     const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    const dueTasks = tasks.filter((t: any) => !t.done && t.dueDate && new Date(t.dueDate) < now);
+    const dueTasks = tasks.filter((t: any) => !t.done && t.dueDate && t.dueDate < todayStr);
     if (dueTasks.length > 0) notificationsList.push({ id: 't1', title: 'Overdue Tasks', time: 'Action Required', msg: `${dueTasks.length} tasks are overdue.`, type: 'alert' });
     
-    const todayMeetings = meetingNotes.filter((m: any) => m.date && new Date(m.date).toDateString() === now.toDateString());
+    const todayTasks = tasks.filter((t: any) => !t.done && t.dueDate === todayStr);
+    if (todayTasks.length > 0) notificationsList.push({ id: 't2', title: 'Tasks Due Today', time: 'Today', msg: `You have ${todayTasks.length} tasks due today.`, type: 'meeting' });
+
+    const todayMeetings = meetingNotes.filter((m: any) => m.date === todayStr || (m.date && m.date.startsWith(todayStr)));
     if (todayMeetings.length > 0) notificationsList.push({ id: 'm1', title: 'Meetings Today', time: 'Today', msg: `You have ${todayMeetings.length} meetings scheduled today.`, type: 'meeting' });
     
+    if (unreadCount > 0) notificationsList.push({ id: 'msg1', title: 'Unread Messages', time: 'New', msg: `You have ${unreadCount} unread message(s).`, type: 'alert' });
+
     if (ideas.length > 0) notificationsList.push({ id: 'i1', title: 'Ideas Captured', time: 'Recent', msg: `You have ${ideas.length} ideas waiting to be reviewed.`, type: 'idea' });
     
     if (notificationsList.length === 0) notificationsList.push({ id: '0', title: 'All Caught Up', time: 'Now', msg: 'No pending alerts or meetings. Great job!', type: 'idea' });
     
     return notificationsList;
-  }, [tasks, meetingNotes, ideas]);
+  }, [tasks, meetingNotes, ideas, unreadCount]);
 
   // --- App View ---
   return (
@@ -437,11 +438,11 @@ export default function Dashboard() {
       <Sidebar currentSection={currentSection} setCurrentSection={setCurrentSection} session={session} storageUsed={storageUsed} handleLogout={handleLogout} />
       
       {/* Main Content Area */}
-      <main className="flex-1 ml-[240px] flex flex-col min-h-screen">
+      <main className="flex-1 ml-[18rem] flex flex-col min-h-screen">
         <Topbar currentSection={currentSection} savedIndicator={savedIndicator} showAIAssistant={showAIAssistant} setShowAIAssistant={setShowAIAssistant} setShowNotifications={setShowNotifications} setShowCommandPalette={setShowCommandPalette} onLogout={handleLogout} user={session.user} />
         
         {/* Page Content */}
-        <div className="flex-1 p-[28px] max-w-[1400px] w-full mx-auto overflow-y-auto">
+        <div className="flex-1 p-8 max-w-[1600px] w-full mx-auto overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSection}
