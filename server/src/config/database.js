@@ -8,11 +8,25 @@ const isProduction = process.env.DATABASE_URL && !process.env.DATABASE_URL.inclu
 let sequelize;
 if (isProduction) {
   // PostgreSQL for VPS
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+  // Automatically enable SSL only for external connections (like Render's external URL)
+  const isExternal = process.env.DATABASE_URL.includes('.render.com') || process.env.DATABASE_URL.includes('ssl=true');
+  
+  const options = {
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     dialect: 'postgres',
     pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
-  });
+  };
+
+  if (isExternal) {
+    options.dialectOptions = {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    };
+  }
+
+  sequelize = new Sequelize(process.env.DATABASE_URL, options);
 } else {
   // SQLite for local testing
   const path = require('path');
