@@ -7,6 +7,7 @@ const ContentItem = require('./ContentItem');
 const Idea = require('./Idea');
 const Tool = require('./Tool');
 const Message = require('./Message');
+const Kra = require('./Kra');
 
 // User relationships
 User.hasMany(TrackerItem, { foreignKey: 'assigneeId', as: 'assignedItems' });
@@ -37,6 +38,10 @@ Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
 Message.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
 
+// Kra relationships
+User.hasMany(Kra, { foreignKey: 'userId', as: 'kras' });
+Kra.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -46,5 +51,6 @@ module.exports = {
   ContentItem,
   Idea,
   Tool,
-  Message
+  Message,
+  Kra
 };

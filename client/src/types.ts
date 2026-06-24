@@ -7,12 +7,12 @@ export enum Section {
   HOME = 'home',
   TRACKER = 'tracker',
   CALENDAR = 'calendar',
-  BRAINDUMP = 'braindump',
   TEAM = 'team',
   MEETINGS = 'meetings',
   REPORTS = 'reports',
   TOOLS = 'tools',
-  MESSAGES = 'messages'
+  MESSAGES = 'messages',
+  KRAS = 'kras'
 }
 
 export enum TaskPriority {
@@ -135,4 +135,18 @@ export interface Conversation {
     createdAt: string;
     read: boolean;
   };
+}
+
+export interface Kra {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  weightage?: number;
+  target?: string;
+  timeframe?: string;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Exceeded' | 'Not Met';
+  createdAt?: string;
+  updatedAt?: string;
+  user?: User;
 }

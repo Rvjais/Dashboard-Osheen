@@ -19,13 +19,13 @@ import NotificationsPanel from "../components/layout/NotificationsPanel";
 import CommandPalette from "../components/layout/CommandPalette";
 import HomeSection from "../components/sections/HomeSection";
 import TrackerSection from "../components/sections/TrackerSection";
-import BrainDumpSection from "../components/sections/BrainDumpSection";
 import ReportsSection from "../components/sections/ReportsSection";
 import CalendarSection from "../components/sections/CalendarSection";
 import TeamSection from "../components/sections/TeamSection";
 import MeetingsSection from "../components/sections/MeetingsSection";
 import ToolsSection from "../components/sections/ToolsSection";
 import MessagesSection from "../components/sections/MessagesSection";
+import KrasSection from "../components/sections/KrasSection";
 
 export default function Dashboard() {
   // --- States ---
@@ -241,7 +241,6 @@ export default function Dashboard() {
   };
 
   // Local storage states
-  const [brainDump, setBrainDump] = useState(() => localStorage.getItem('taskstudio_braindump') || '');
   const [homeWidgets, setHomeWidgets]
  = useState(() => {
     const saved = localStorage.getItem('taskstudio_home_widgets');
@@ -273,12 +272,6 @@ export default function Dashboard() {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
-      
-      // Auto-clear brain dump at midnight
-      if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) {
-        setBrainDump('');
-        localStorage.setItem('taskstudio_braindump', '');
-      }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -386,10 +379,8 @@ export default function Dashboard() {
         />
       );
       case Section.TRACKER: return <TrackerSection tracker={tracker} setTracker={setTracker} session={session} team={team} setFocusMode={setFocusMode} setCurrentSection={setCurrentSection} />;
-
       case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tasks={tasks} meetingNotes={meetingNotes} session={session} />;
 
-      case Section.BRAINDUMP: return <BrainDumpSection brainDump={brainDump} setBrainDump={setBrainDump} currentTime={currentTime} setTasks={setTasks} tasks={tasks} session={session} />;
       case Section.REPORTS: return <ReportsSection team={team} tasks={tasks} />;
       case Section.TEAM: return (
         <TeamSection 
@@ -405,6 +396,7 @@ export default function Dashboard() {
       case Section.MEETINGS: return <MeetingsSection meetingNotes={meetingNotes} setMeetingNotes={setMeetingNotes} />;
       case Section.TOOLS: return <ToolsSection tools={tools} setTools={setTools} />;
       case Section.MESSAGES: return <MessagesSection session={session} team={team} />;
+      case Section.KRAS: return <KrasSection session={session} team={team} />;
       default: return null;
     }
   };

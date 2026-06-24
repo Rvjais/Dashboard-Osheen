@@ -25,8 +25,6 @@ const AIAssistant = ({ onClose, currentSection }: AIAssistantProps) => {
         return ['Summarize active projects', 'Identify overdue deliverables', 'Analyze team workload distribution'];
       case Section.CALENDAR:
         return ['Summarize next month highlights', 'Optimize publishing schedule', 'Ideate content for LinkedIn'];
-      case Section.BRAINDUMP:
-        return ['Structure my session notes', 'Extract action items', 'Identify recurring themes'];
       case Section.TEAM:
         return ['Summarize team performance', 'Draft a team-wide update', 'Suggest 1-on-1 topics'];
       case Section.MEETINGS:

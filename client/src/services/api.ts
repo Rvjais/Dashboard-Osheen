@@ -46,7 +46,7 @@ api.interceptors.response.use(
 
 import { 
   Role, Section, TaskPriority, TaskStatus, User, TrackerItem, ContentItem, 
-  MeetingNote, Task, Tool, Idea, Message 
+  MeetingNote, Task, Tool, Idea, Message, Kra
 } from '../types';
 
 // Auth API
@@ -246,6 +246,21 @@ export const messagesAPI = {
 
   sendRoomMessage: (roomId: string, content: string) =>
     api.post('/messages/room', { roomId, content }),
+};
+
+// KRAs API
+export const krasAPI = {
+  getAll: (userId?: string) =>
+    api.get('/kras', { params: { userId } }),
+
+  create: (data: Partial<Kra>) =>
+    api.post('/kras', data),
+
+  update: (id: string, data: Partial<Kra>) =>
+    api.put(`/kras/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/kras/${id}`),
 };
 
 export default api;

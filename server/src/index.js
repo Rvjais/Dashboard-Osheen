@@ -15,6 +15,7 @@ const contentRoutes = require('./routes/content');
 const geminiRoutes = require('./routes/gemini');
 const calendarRoutes = require('./routes/calendar');
 const messageRoutes = require('./routes/messages');
+const kraRoutes = require('./routes/kras');
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/content', contentRoutes);
 app.use('/api/gemini', geminiRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/kras', kraRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

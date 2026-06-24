@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Home, Table, Calendar, Brain, FileText, BarChart2, Grid, Users, LogOut, MessageSquare } from 'lucide-react';
+import { Home, Table, Calendar, FileText, BarChart2, Grid, Users, LogOut, MessageSquare, Target } from 'lucide-react';
 import { cn, formatBytes } from '../../lib/utils';
 import { Section, Role, User } from '../../types';
 
@@ -14,8 +14,8 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { id: Section.HOME, label: 'Home', icon: Home },
   { id: Section.TRACKER, label: 'Tracker', icon: Table },
+  { id: Section.KRAS, label: "KRA's", icon: Target },
   { id: Section.CALENDAR, label: 'Calendar', icon: Calendar },
-  { id: Section.BRAINDUMP, label: 'Brain Dump', icon: Brain },
   { id: Section.MESSAGES, label: 'Messages', icon: MessageSquare },
   { id: Section.MEETINGS, label: 'Meetings', icon: FileText },
   { id: Section.REPORTS, label: 'Reports', icon: BarChart2 },

@@ -26,7 +26,6 @@ const CommandPalette = ({ showCommandPalette, setShowCommandPalette, setCurrentS
     { cmd: '/idea', desc: 'Capture a quick idea', section: Section.HOME },
     { cmd: '/tracker', desc: 'Add row to Daily Tracker', section: Section.TRACKER },
     { cmd: '/meeting', desc: 'Start meeting note', section: Section.MEETINGS },
-    { cmd: '/braindump', desc: 'Switch to Brain Dump', section: Section.BRAINDUMP },
     { cmd: '/focus', desc: 'Start a focus session', action: onStartFocus },
     { cmd: '/logout', desc: 'Securely exit current session', action: onLogout },
   ];
