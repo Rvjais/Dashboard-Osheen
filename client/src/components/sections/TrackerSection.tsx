@@ -29,22 +29,41 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Column order and drag states
-  const [columnOrder, setColumnOrder] = useState<string[]>([
-    'checkbox',
-    'name',
-    'type',
-    'priority',
-    'status',
-    'deliverable',
-    'assignee',
-    'links',
-    'actions'
-  ]);
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('taskstudio_tracker_column_order');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const required = ['checkbox', 'name', 'type', 'priority', 'status', 'deliverable', 'assignee', 'links', 'actions'];
+          const hasAll = required.every(col => parsed.includes(col));
+          if (hasAll && parsed.length === required.length) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse saved column order', e);
+      }
+    }
+    return [
+      'checkbox',
+      'name',
+      'type',
+      'priority',
+      'status',
+      'deliverable',
+      'assignee',
+      'links',
+      'actions'
+    ];
+  });
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
 
   // Export states
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportRange, setExportRange] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('weekly');
+  const [exportRange, setExportRange] = useState<'daily' | 'weekly' | 'monthly' | 'all' | 'custom'>('weekly');
+  const [customStartDate, setCustomStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [customEndDate, setCustomEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const { data: historyData } = useQuery({
     queryKey: ['tracker-history'],
@@ -73,10 +92,22 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
     newOrder.splice(targetIndex, 0, draggedCol);
 
     setColumnOrder(newOrder);
+    localStorage.setItem('taskstudio_tracker_column_order', JSON.stringify(newOrder));
     setDraggedCol(null);
   };
 
   const handleExportCSV = () => {
+    if (exportRange === 'custom') {
+      if (!customStartDate || !customEndDate) {
+        alert('Please select both start and end dates.');
+        return;
+      }
+      if (customStartDate > customEndDate) {
+        alert('Start date cannot be after end date.');
+        return;
+      }
+    }
+
     const combinedTasks = [...tracker, ...historyItems];
     const filteredTasks = combinedTasks.filter(item => {
       if (!item.date) return false;
@@ -90,6 +121,8 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
           return isSameWeek(taskDate, today);
         case 'monthly':
           return isSameMonth(taskDate, today);
+        case 'custom':
+          return item.date >= customStartDate && item.date <= customEndDate;
         case 'all':
         default:
           return true;
@@ -127,7 +160,12 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `task_studio_export_${exportRange}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    
+    const fileNameSuffix = exportRange === 'custom' 
+      ? `custom_${customStartDate}_to_${customEndDate}` 
+      : `${exportRange}_${format(new Date(), 'yyyy-MM-dd')}`;
+    link.setAttribute('download', `task_studio_export_${fileNameSuffix}.csv`);
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -840,7 +878,8 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                 { id: 'daily', label: 'Daily (Today)', desc: 'Tasks scheduled for today' },
                 { id: 'weekly', label: 'Weekly', desc: 'Tasks from the current week' },
                 { id: 'monthly', label: 'Monthly', desc: 'Tasks from the current month' },
-                { id: 'all', label: 'All Time', desc: 'Export all available tasks' }
+                { id: 'all', label: 'All Time', desc: 'Export all available tasks' },
+                { id: 'custom', label: 'Custom Range', desc: 'Select custom date range' }
               ].map(opt => (
                 <button
                   key={opt.id}
@@ -848,6 +887,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                   onClick={() => setExportRange(opt.id as any)}
                   className={cn(
                     "p-4 rounded-2xl border text-left flex flex-col justify-between hover:border-brand-accent transition-all",
+                    opt.id === 'custom' && "col-span-2",
                     exportRange === opt.id 
                       ? 'border-brand-accent bg-brand-accent/5 ring-1 ring-brand-accent' 
                       : 'border-gray-200 bg-white'
@@ -859,6 +899,29 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
               ))}
             </div>
           </div>
+
+          {exportRange === 'custom' && (
+            <div className="flex gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-fadeIn">
+              <div className="flex-1 space-y-1">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Start Date</label>
+                <input 
+                  type="date" 
+                  value={customStartDate} 
+                  onChange={(e) => setCustomStartDate(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent text-xs font-semibold text-gray-700"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">End Date</label>
+                <input 
+                  type="date" 
+                  value={customEndDate} 
+                  onChange={(e) => setCustomEndDate(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent text-xs font-semibold text-gray-700"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-3">
             <Button
