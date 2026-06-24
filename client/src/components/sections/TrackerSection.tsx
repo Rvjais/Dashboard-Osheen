@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, X, Link as LinkIcon, Paperclip, Trash2, History, Download, Clock } from 'lucide-react';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { Plus, X, Link as LinkIcon, Paperclip, Trash2, History, Download, Clock, GripVertical } from 'lucide-react';
+import { format, parseISO, isSameDay, isSameWeek, isSameMonth } from 'date-fns';
 import { cn } from '../../lib/utils';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import PromptDialog from '../ui/PromptDialog';
+import Modal from '../ui/Modal';
 import { trackerAPI } from '../../services/api';
 import { TrackerItem, TaskPriority, TaskStatus, User } from '../../types';
 
@@ -27,11 +28,111 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   const [timelineDate, setTimelineDate] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Column order and drag states
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'checkbox',
+    'name',
+    'type',
+    'priority',
+    'status',
+    'deliverable',
+    'assignee',
+    'links',
+    'actions'
+  ]);
+  const [draggedCol, setDraggedCol] = useState<string | null>(null);
+
+  // Export states
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportRange, setExportRange] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('weekly');
+
   const { data: historyData } = useQuery({
     queryKey: ['tracker-history'],
     queryFn: () => trackerAPI.getHistory().then(res => res.data),
-    enabled: showHistory,
   });
+
+  const handleDragStart = (e: React.DragEvent, colId: string) => {
+    setDraggedCol(colId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', colId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetColId: string) => {
+    e.preventDefault();
+    if (!draggedCol || draggedCol === targetColId) return;
+
+    const draggedIndex = columnOrder.indexOf(draggedCol);
+    const targetIndex = columnOrder.indexOf(targetColId);
+
+    const newOrder = [...columnOrder];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedCol);
+
+    setColumnOrder(newOrder);
+    setDraggedCol(null);
+  };
+
+  const handleExportCSV = () => {
+    const combinedTasks = [...tracker, ...historyItems];
+    const filteredTasks = combinedTasks.filter(item => {
+      if (!item.date) return false;
+      const taskDate = parseISO(item.date);
+      const today = new Date();
+      
+      switch (exportRange) {
+        case 'daily':
+          return isSameDay(taskDate, today);
+        case 'weekly':
+          return isSameWeek(taskDate, today);
+        case 'monthly':
+          return isSameMonth(taskDate, today);
+        case 'all':
+        default:
+          return true;
+      }
+    });
+
+    if (filteredTasks.length === 0) {
+      alert('No tasks found in the selected range to export.');
+      return;
+    }
+
+    const headers = ['Task Name', 'Type', 'Priority', 'Status', 'Deliverable', 'Assignee', 'Link', 'Notes', 'Date', 'Completed At'];
+    
+    const rows = filteredTasks.map(item => {
+      const assigneeName = team.find(m => m.id === item.assigneeId)?.name || 'Unassigned';
+      return [
+        item.name || '',
+        item.type || '',
+        item.priority || '',
+        item.status || '',
+        item.deliverable || '',
+        assigneeName,
+        item.link || '',
+        item.notes || '',
+        item.date || '',
+        item.completedAt || ''
+      ].map(val => {
+        const escaped = String(val).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `task_studio_export_${exportRange}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExportModalOpen(false);
+  };
 
   const historyItems = useMemo(() => {
     const raw = Array.isArray(historyData) ? historyData : (historyData?.items || []);
@@ -146,6 +247,9 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                   <Plus size={16} /> New Row
                 </Button>
               )}
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => setExportModalOpen(true)}>
+                <Download size={16} /> Export
+              </Button>
               <Button variant="ghost" size="sm" className="gap-2" onClick={() => setShowHistory(true)}>
                 <History size={16} /> History
               </Button>
@@ -184,7 +288,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3">Item Name</th>
+                    <th className="px-4 py-3">Task Name</th>
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3">Completed At</th>
                     <th className="px-4 py-3">Priority</th>
@@ -241,125 +345,296 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox" className="rounded cursor-pointer" checked={allSelected} onChange={toggleSelectAll} />
-                  </th>
-                  <th className="px-4 py-3 min-w-[200px]">Item Name</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 min-w-[150px]">Deliverable</th>
-                  <th className="px-4 py-3">Assignee</th>
-                  <th className="px-4 py-3">Links</th>
-                  <th className="px-4 py-3 w-14"></th>
+                  {columnOrder.map(colId => {
+                    switch (colId) {
+                      case 'checkbox':
+                        return (
+                          <th key="checkbox" className="px-4 py-3 w-10">
+                            <input type="checkbox" className="rounded cursor-pointer" checked={allSelected} onChange={toggleSelectAll} />
+                          </th>
+                        );
+                      case 'name':
+                        return (
+                          <th 
+                            key="name" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'name')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'name')}
+                            className={cn(
+                              "px-4 py-3 min-w-[200px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'name' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Task Name</span>
+                            </div>
+                          </th>
+                        );
+                      case 'type':
+                        return (
+                          <th 
+                            key="type" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'type')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'type')}
+                            className={cn(
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'type' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Type</span>
+                            </div>
+                          </th>
+                        );
+                      case 'priority':
+                        return (
+                          <th 
+                            key="priority" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'priority')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'priority')}
+                            className={cn(
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'priority' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Priority</span>
+                            </div>
+                          </th>
+                        );
+                      case 'status':
+                        return (
+                          <th 
+                            key="status" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'status')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'status')}
+                            className={cn(
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'status' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Status</span>
+                            </div>
+                          </th>
+                        );
+                      case 'deliverable':
+                        return (
+                          <th 
+                            key="deliverable" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'deliverable')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'deliverable')}
+                            className={cn(
+                              "px-4 py-3 min-w-[150px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'deliverable' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Deliverable</span>
+                            </div>
+                          </th>
+                        );
+                      case 'assignee':
+                        return (
+                          <th 
+                            key="assignee" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'assignee')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'assignee')}
+                            className={cn(
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'assignee' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Assignee</span>
+                            </div>
+                          </th>
+                        );
+                      case 'links':
+                        return (
+                          <th 
+                            key="links" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'links')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'links')}
+                            className={cn(
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'links' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={12} className="text-gray-400 shrink-0" />
+                              <span>Links</span>
+                            </div>
+                          </th>
+                        );
+                      case 'actions':
+                        return (
+                          <th key="actions" className="px-4 py-3 w-14"></th>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {tracker.map(item => (
                   <tr key={item.id} className="border-b last:border-none border-gray-100 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <input type="checkbox" className="rounded cursor-pointer" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-1 rounded font-medium w-full"
-                        defaultValue={item.name}
-                        onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, name: e.target.value } : t))}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        className="bg-gray-100 px-2 py-1 rounded focus:outline-none w-full"
-                        value={item.type}
-                        onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, type: e.target.value } : t))}
-                      >
-                        {['Task', 'Deliverable', 'Meeting', 'Creative', 'Note', 'Journal', 'Content'].map(v => <option key={v} value={v}>{v}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none appearance-none cursor-pointer",
-                          item.priority === TaskPriority.EMERGENCY ? 'bg-red-100 text-red-600' :
-                          item.priority === TaskPriority.HIGH ? 'bg-orange-100 text-orange-600' :
-                          item.priority === TaskPriority.MEDIUM ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                        )}
-                        value={item.priority}
-                        onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, priority: e.target.value as TaskPriority } : t))}
-                      >
-                        {Object.values(TaskPriority).map(v => <option key={v} value={v}>{v === TaskPriority.EMERGENCY ? '🚨 Emergency' : v}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none",
-                          item.status === TaskStatus.DONE ? 'bg-emerald-100 text-emerald-600' :
-                          item.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
-                        )}
-                        value={item.status}
-                        onChange={(e) => updateStatus(item.id, e.target.value as TaskStatus)}
-                      >
-                        {Object.values(TaskStatus).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        className="bg-transparent hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 ring-gray-200 px-2 py-1 rounded w-full transition-colors placeholder:text-gray-300"
-                        placeholder="Type here..."
-                        defaultValue={item.deliverable === '-' ? '' : item.deliverable}
-                        onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, deliverable: e.target.value || '-' } : t))}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[8px] font-bold text-white uppercase"
-                          style={{ backgroundColor: team.find(m => m.id === item.assigneeId)?.avatarColor || '#ccc' }}
-                        >
-                          {team.find(m => m.id === item.assigneeId)?.name.charAt(0) || '?'}
-                        </div>
-                        <select
-                          className="bg-transparent text-xs font-medium focus:outline-none w-full cursor-pointer truncate max-w-[80px]"
-                          value={item.assigneeId || ''}
-                          onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, assigneeId: e.target.value } : t))}
-                        >
-                          <option value="">Unassigned</option>
-                          {team.map((m: User) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 items-center">
-                        {item.link ? (
-                          <div className="flex gap-1 items-center">
-                            <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
-                              <LinkIcon size={14} />
-                            </a>
-                            <button onClick={() => setTracker(tracker.map(t => t.id === item.id ? { ...t, link: '' } : t))} className="text-gray-300 hover:text-red-500" title="Remove Link"><X size={12} /></button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setLinkPrompt(item.id)} className="text-gray-300 hover:text-brand-accent transition-colors"><Plus size={14} /></button>
-                        )}
-                        {item.attachment ? (
-                          <a href={item.attachment.path} download={item.attachment.name} className="text-emerald-500 hover:text-emerald-700" title={item.attachment.name}>
-                            <Download size={14} />
-                          </a>
-                        ) : (
-                          <button onClick={() => fileInputRef.current?.click()} className="text-gray-300 hover:text-gray-500 transition-colors"><Paperclip size={14} /></button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {setFocusMode && (
-                          <button onClick={() => setFocusMode({ active: true, taskName: item.name, duration: 25, timeLeft: 25 * 60, timerActive: false })} className="text-gray-300 hover:text-brand-accent transition-colors" title="Focus mode">
-                            <Clock size={14} />
-                          </button>
-                        )}
-                        <button onClick={() => setTracker(tracker.filter(t => t.id !== item.id))} className="text-gray-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+                    {columnOrder.map(colId => {
+                      switch (colId) {
+                        case 'checkbox':
+                          return (
+                            <td key="checkbox" className="px-4 py-3">
+                              <input type="checkbox" className="rounded cursor-pointer" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} />
+                            </td>
+                          );
+                        case 'name':
+                          return (
+                            <td key="name" className="px-4 py-3">
+                              <input
+                                className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-1 rounded font-medium w-full"
+                                defaultValue={item.name}
+                                onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, name: e.target.value } : t))}
+                              />
+                            </td>
+                          );
+                        case 'type':
+                          return (
+                            <td key="type" className="px-4 py-3">
+                              <select
+                                className="bg-gray-100 px-2 py-1 rounded focus:outline-none w-full"
+                                value={item.type}
+                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, type: e.target.value } : t))}
+                              >
+                                {['Task', 'Deliverable', 'Meeting', 'Creative', 'Note', 'Journal', 'Content'].map(v => <option key={v} value={v}>{v}</option>)}
+                              </select>
+                            </td>
+                          );
+                        case 'priority':
+                          return (
+                            <td key="priority" className="px-4 py-3">
+                              <select
+                                className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none appearance-none cursor-pointer",
+                                  item.priority === TaskPriority.EMERGENCY ? 'bg-red-100 text-red-600' :
+                                  item.priority === TaskPriority.HIGH ? 'bg-orange-100 text-orange-600' :
+                                  item.priority === TaskPriority.MEDIUM ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                                )}
+                                value={item.priority}
+                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, priority: e.target.value as TaskPriority } : t))}
+                              >
+                                {Object.values(TaskPriority).map(v => <option key={v} value={v}>{v === TaskPriority.EMERGENCY ? '🚨 Emergency' : v}</option>)}
+                              </select>
+                            </td>
+                          );
+                        case 'status':
+                          return (
+                            <td key="status" className="px-4 py-3">
+                              <select
+                                className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none",
+                                  item.status === TaskStatus.DONE ? 'bg-emerald-100 text-emerald-600' :
+                                  item.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                                )}
+                                value={item.status}
+                                onChange={(e) => updateStatus(item.id, e.target.value as TaskStatus)}
+                              >
+                                {Object.values(TaskStatus).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+                              </select>
+                            </td>
+                          );
+                        case 'deliverable':
+                          return (
+                            <td key="deliverable" className="px-4 py-3">
+                              <input
+                                className="bg-transparent hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 ring-gray-200 px-2 py-1 rounded w-full transition-colors placeholder:text-gray-300"
+                                placeholder="Type here..."
+                                defaultValue={item.deliverable === '-' ? '' : item.deliverable}
+                                onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, deliverable: e.target.value || '-' } : t))}
+                              />
+                            </td>
+                          );
+                        case 'assignee':
+                          return (
+                            <td key="assignee" className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[8px] font-bold text-white uppercase"
+                                  style={{ backgroundColor: team.find(m => m.id === item.assigneeId)?.avatarColor || '#ccc' }}
+                                >
+                                  {team.find(m => m.id === item.assigneeId)?.name.charAt(0) || '?'}
+                                </div>
+                                <select
+                                  className="bg-transparent text-xs font-medium focus:outline-none w-full cursor-pointer truncate max-w-[80px]"
+                                  value={item.assigneeId || ''}
+                                  onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, assigneeId: e.target.value } : t))}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {team.map((m: User) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
+                              </div>
+                            </td>
+                          );
+                        case 'links':
+                          return (
+                            <td key="links" className="px-4 py-3">
+                              <div className="flex gap-2 items-center">
+                                {item.link ? (
+                                  <div className="flex gap-1 items-center">
+                                    <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
+                                      <LinkIcon size={14} />
+                                    </a>
+                                    <button onClick={() => setTracker(tracker.map(t => t.id === item.id ? { ...t, link: '' } : t))} className="text-gray-300 hover:text-red-500" title="Remove Link"><X size={12} /></button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setLinkPrompt(item.id)} className="text-gray-300 hover:text-brand-accent transition-colors"><Plus size={14} /></button>
+                                )}
+                                {item.attachment ? (
+                                  <a href={item.attachment.path} download={item.attachment.name} className="text-emerald-500 hover:text-emerald-700" title={item.attachment.name}>
+                                    <Download size={14} />
+                                  </a>
+                                ) : (
+                                  <button onClick={() => fileInputRef.current?.click()} className="text-gray-300 hover:text-gray-500 transition-colors"><Paperclip size={14} /></button>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        case 'actions':
+                          return (
+                            <td key="actions" className="px-4 py-3">
+                              <div className="flex gap-1">
+                                {setFocusMode && (
+                                  <button onClick={() => setFocusMode({ active: true, taskName: item.name, duration: 25, timeLeft: 25 * 60, timerActive: false })} className="text-gray-300 hover:text-brand-accent transition-colors" title="Focus mode">
+                                    <Clock size={14} />
+                                  </button>
+                                )}
+                                <button onClick={() => setTracker(tracker.filter(t => t.id !== item.id))} className="text-gray-300 hover:text-red-500 transition-colors">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -545,6 +820,63 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
           e.target.value = '';
         }}
       />
+
+      {/* Export Options Modal */}
+      <Modal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="Export Tracker Tasks"
+        className="max-w-md"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-gray-500">
+            Export your task history and daily tracker items into a standard CSV file. Select the date range to download.
+          </p>
+
+          <div className="space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">Date Range</label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'daily', label: 'Daily (Today)', desc: 'Tasks scheduled for today' },
+                { id: 'weekly', label: 'Weekly', desc: 'Tasks from the current week' },
+                { id: 'monthly', label: 'Monthly', desc: 'Tasks from the current month' },
+                { id: 'all', label: 'All Time', desc: 'Export all available tasks' }
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setExportRange(opt.id as any)}
+                  className={cn(
+                    "p-4 rounded-2xl border text-left flex flex-col justify-between hover:border-brand-accent transition-all",
+                    exportRange === opt.id 
+                      ? 'border-brand-accent bg-brand-accent/5 ring-1 ring-brand-accent' 
+                      : 'border-gray-200 bg-white'
+                  )}
+                >
+                  <span className="text-xs font-extrabold text-gray-900">{opt.label}</span>
+                  <span className="text-[10px] text-gray-400 mt-1 font-medium leading-tight">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-3">
+            <Button
+              variant="secondary"
+              className="flex-1 rounded-2xl py-3"
+              onClick={() => setExportModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 rounded-2xl py-3 bg-brand-accent hover:bg-brand-accent/90 text-white shadow-lg shadow-brand-accent/10"
+              onClick={handleExportCSV}
+            >
+              Export CSV
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
