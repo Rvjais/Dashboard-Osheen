@@ -38,11 +38,9 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
         if (!val) return true;
         switch (col) {
           case 'name': return (item.name || '').toLowerCase().includes(val.toLowerCase());
-          case 'type': return item.type === val;
-          case 'priority': return item.priority === val;
           case 'status': return item.status === val;
           case 'assignee': return item.assigneeId === val;
-          case 'deliverable': return (item.deliverable || '').toLowerCase().includes(val.toLowerCase());
+          case 'dueDate': return item.date === val;
           default: return true;
         }
       });
@@ -56,7 +54,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const required = ['checkbox', 'name', 'type', 'priority', 'status', 'deliverable', 'assignee', 'links', 'actions'];
+          const required = ['checkbox', 'name', 'status', 'dueDate', 'progress', 'assignee', 'actions'];
           const hasAll = required.every(col => parsed.includes(col));
           if (hasAll && parsed.length === required.length) {
             return parsed;
@@ -69,12 +67,10 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
     return [
       'checkbox',
       'name',
-      'type',
-      'priority',
       'status',
-      'deliverable',
+      'dueDate',
+      'progress',
       'assignee',
-      'links',
       'actions'
     ];
   });
@@ -350,27 +346,18 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                     <th className="px-4 py-3">Task Name</th>
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3">Completed At</th>
-                    <th className="px-4 py-3">Priority</th>
                     <th className="px-4 py-3">Assignee</th>
-                    <th className="px-4 py-3">Deliverable</th>
                   </tr>
                 </thead>
                 <tbody>
                   {historyItems.map(item => (
                     <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-medium">{item.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{item.date}</td>
-                      <td className="px-4 py-3 text-gray-500 font-mono">
+                      <td className="px-6 py-4 text-sm font-medium">{item.name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{item.date}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500 font-mono">
                         {item.completedAt ? format(parseISO(item.completedAt as string), 'MMM dd, HH:mm') : '-'}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                          item.priority === TaskPriority.EMERGENCY ? 'bg-red-100 text-red-600' :
-                          item.priority === TaskPriority.HIGH ? 'bg-orange-100 text-orange-600' :
-                          item.priority === TaskPriority.MEDIUM ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                        )}>{item.priority}</span>
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 text-sm">
                         <div className="flex items-center gap-2">
                           <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
                             style={{ backgroundColor: team.find(m => m.id === item.assigneeId)?.avatarColor || '#ccc' }}>
@@ -379,7 +366,6 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                           <span>{team.find(m => m.id === item.assigneeId)?.name || 'Unknown'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{item.deliverable}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -408,7 +394,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                     switch (colId) {
                       case 'checkbox':
                         return (
-                          <th key="checkbox" className="px-4 py-3 w-10">
+                          <th key="checkbox" className="px-6 py-4 text-sm w-10">
                             <input type="checkbox" className="rounded cursor-pointer" checked={allSelected} onChange={toggleSelectAll} />
                           </th>
                         );
@@ -421,7 +407,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'name')}
                             className={cn(
-                              "px-4 py-3 min-w-[200px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
+                              "px-6 py-4 text-sm min-w-[200px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'name' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
@@ -452,89 +438,64 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             )}
                           </th>
                         );
-                      case 'type':
+                      case 'dueDate':
                         return (
                           <th 
-                            key="type" 
+                            key="dueDate" 
                             draggable 
-                            onDragStart={(e) => handleDragStart(e, 'type')}
+                            onDragStart={(e) => handleDragStart(e, 'dueDate')}
                             onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, 'type')}
+                            onDrop={(e) => handleDrop(e, 'dueDate')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
-                              draggedCol === 'type' && "opacity-50 border-2 border-dashed border-brand-accent"
+                              "px-6 py-4 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
+                              draggedCol === 'dueDate' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
                             <div className="flex items-center justify-between gap-1.5">
                               <div className="flex items-center gap-1.5">
-                                <GripVertical size={12} className="text-gray-400 shrink-0" />
-                                <span>Type</span>
+                                <GripVertical size={14} className="text-gray-400 shrink-0" />
+                                <span>Due Date</span>
                               </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'type' ? null : 'type')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['type'] && "text-brand-accent")}>
-                                <Filter size={12} />
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'dueDate' ? null : 'dueDate')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['dueDate'] && "text-brand-accent")}>
+                                <Filter size={14} />
                               </button>
                             </div>
-                            {activeFilterCol === 'type' && (
+                            {activeFilterCol === 'dueDate' && (
                               <div 
                                 className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
                                 onClick={e => e.stopPropagation()}
                                 draggable={true}
                                 onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
                               >
-                                <select
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['type'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, type: e.target.value })}
-                                >
-                                  <option value="">All Types</option>
-                                  {['Task', 'Deliverable', 'Meeting', 'Creative', 'Note', 'Journal', 'Content'].map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
+                                <input
+                                  type="date"
+                                  className="w-full text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['dueDate'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, dueDate: e.target.value })}
+                                />
                               </div>
                             )}
                           </th>
                         );
-                      case 'priority':
+                      case 'progress':
                         return (
                           <th 
-                            key="priority" 
+                            key="progress" 
                             draggable 
-                            onDragStart={(e) => handleDragStart(e, 'priority')}
+                            onDragStart={(e) => handleDragStart(e, 'progress')}
                             onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, 'priority')}
+                            onDrop={(e) => handleDrop(e, 'progress')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
-                              draggedCol === 'priority' && "opacity-50 border-2 border-dashed border-brand-accent"
+                              "px-6 py-4 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              draggedCol === 'progress' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <GripVertical size={12} className="text-gray-400 shrink-0" />
-                                <span>Priority</span>
-                              </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'priority' ? null : 'priority')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['priority'] && "text-brand-accent")}>
-                                <Filter size={12} />
-                              </button>
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical size={14} className="text-gray-400 shrink-0" />
+                              <span>Progress</span>
                             </div>
-                            {activeFilterCol === 'priority' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <select
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['priority'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, priority: e.target.value })}
-                                >
-                                  <option value="">All Priorities</option>
-                                  {Object.values(TaskPriority).map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                              </div>
-                            )}
                           </th>
-                        );
-                      case 'status':
+                        );case 'status':
                         return (
                           <th 
                             key="status" 
@@ -543,7 +504,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'status')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
+                              "px-6 py-4 text-sm cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'status' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
@@ -569,48 +530,14 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                   onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
                                 >
                                   <option value="">All Statuses</option>
-                                  {Object.values(TaskStatus).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+                                  {Object.values(TaskStatus).map(v => <option key={v} value={v}>
+                                    {v === TaskStatus.DONE ? '🟢 ' : 
+                                     v === TaskStatus.IN_PROGRESS ? '🔵 ' : 
+                                     v === TaskStatus.BLOCKED ? '🔴 ' : 
+                                     v === TaskStatus.IN_REVIEW ? '🟡 ' : '⚪ '}
+                                    {v.replace('_', ' ')}
+                                  </option>)}
                                 </select>
-                              </div>
-                            )}
-                          </th>
-                        );
-                      case 'deliverable':
-                        return (
-                          <th 
-                            key="deliverable" 
-                            draggable 
-                            onDragStart={(e) => handleDragStart(e, 'deliverable')}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, 'deliverable')}
-                            className={cn(
-                              "px-4 py-3 min-w-[150px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
-                              draggedCol === 'deliverable' && "opacity-50 border-2 border-dashed border-brand-accent"
-                            )}
-                          >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <GripVertical size={12} className="text-gray-400 shrink-0" />
-                                <span>Deliverable</span>
-                              </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'deliverable' ? null : 'deliverable')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['deliverable'] && "text-brand-accent")}>
-                                <Filter size={12} />
-                              </button>
-                            </div>
-                            {activeFilterCol === 'deliverable' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <input
-                                  type="text"
-                                  placeholder="Filter by deliverable..."
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['deliverable'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, deliverable: e.target.value })}
-                                />
                               </div>
                             )}
                           </th>
@@ -624,7 +551,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'assignee')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
+                              "px-6 py-4 text-sm cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'assignee' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
@@ -656,28 +583,9 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             )}
                           </th>
                         );
-                      case 'links':
-                        return (
-                          <th 
-                            key="links" 
-                            draggable 
-                            onDragStart={(e) => handleDragStart(e, 'links')}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, 'links')}
-                            className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
-                              draggedCol === 'links' && "opacity-50 border-2 border-dashed border-brand-accent"
-                            )}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Links</span>
-                            </div>
-                          </th>
-                        );
                       case 'actions':
                         return (
-                          <th key="actions" className="px-4 py-3 w-14"></th>
+                          <th key="actions" className="px-6 py-4 text-sm w-14"></th>
                         );
                       default:
                         return null;
@@ -692,13 +600,13 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                       switch (colId) {
                         case 'checkbox':
                           return (
-                            <td key="checkbox" className="px-4 py-3">
+                            <td key="checkbox" className="px-6 py-4 text-sm">
                               <input type="checkbox" className="rounded cursor-pointer" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} />
                             </td>
                           );
                         case 'name':
                           return (
-                            <td key="name" className="px-4 py-3">
+                            <td key="name" className="px-6 py-4 text-sm">
                               <input
                                 className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-1 rounded font-medium w-full"
                                 defaultValue={item.name}
@@ -706,63 +614,63 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                               />
                             </td>
                           );
-                        case 'type':
+                        case 'dueDate':
                           return (
-                            <td key="type" className="px-4 py-3">
-                              <select
-                                className="bg-gray-100 px-2 py-1 rounded focus:outline-none w-full"
-                                value={item.type}
-                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, type: e.target.value } : t))}
-                              >
-                                {['Task', 'Deliverable', 'Meeting', 'Creative', 'Note', 'Journal', 'Content'].map(v => <option key={v} value={v}>{v}</option>)}
-                              </select>
+                            <td key="dueDate" className="px-6 py-4">
+                              <input
+                                type="date"
+                                className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-2 py-1 rounded text-sm text-gray-600"
+                                value={item.date}
+                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, date: e.target.value } : t))}
+                              />
                             </td>
                           );
-                        case 'priority':
+                        case 'progress':
                           return (
-                            <td key="priority" className="px-4 py-3">
-                              <select
-                                className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none appearance-none cursor-pointer",
-                                  item.priority === TaskPriority.EMERGENCY ? 'bg-red-100 text-red-600' :
-                                  item.priority === TaskPriority.HIGH ? 'bg-orange-100 text-orange-600' :
-                                  item.priority === TaskPriority.MEDIUM ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                                )}
-                                value={item.priority}
-                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, priority: e.target.value as TaskPriority } : t))}
-                              >
-                                {Object.values(TaskPriority).map(v => <option key={v} value={v}>{v === TaskPriority.EMERGENCY ? '🚨 Emergency' : v}</option>)}
-                              </select>
+                            <td key="progress" className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${item.progress || 0}%` }} />
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  className="w-12 bg-transparent text-sm text-gray-500 focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-1 rounded text-right"
+                                  value={item.progress || 0}
+                                  onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, progress: parseInt(e.target.value) || 0 } : t))}
+                                />
+                                <span className="text-sm text-gray-500">%</span>
+                              </div>
                             </td>
-                          );
-                        case 'status':
+                          );case 'status':
                           return (
-                            <td key="status" className="px-4 py-3">
+                            <td key="status" className="px-6 py-4 text-sm">
                               <select
-                                className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase focus:outline-none",
-                                  item.status === TaskStatus.DONE ? 'bg-emerald-100 text-emerald-600' :
-                                  item.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                                className={cn("px-3 py-1.5 rounded-full text-xs font-bold focus:outline-none shadow-sm cursor-pointer",
+                                  
+                                  item.status === TaskStatus.DONE ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  item.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
+                                  item.status === TaskStatus.BLOCKED ? 'bg-red-50 text-red-700 border border-red-200' :
+                                  item.status === TaskStatus.IN_REVIEW ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                  'bg-gray-50 text-gray-700 border border-gray-200'
                                 )}
                                 value={item.status}
                                 onChange={(e) => updateStatus(item.id, e.target.value as TaskStatus)}
                               >
-                                {Object.values(TaskStatus).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+                                {Object.values(TaskStatus).map(v => <option key={v} value={v}>
+                                    {v === TaskStatus.DONE ? '🟢 ' : 
+                                     v === TaskStatus.IN_PROGRESS ? '🔵 ' : 
+                                     v === TaskStatus.BLOCKED ? '🔴 ' : 
+                                     v === TaskStatus.IN_REVIEW ? '🟡 ' : '⚪ '}
+                                    {v.replace('_', ' ')}
+                                  </option>)}
                               </select>
-                            </td>
-                          );
-                        case 'deliverable':
-                          return (
-                            <td key="deliverable" className="px-4 py-3">
-                              <input
-                                className="bg-transparent hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 ring-gray-200 px-2 py-1 rounded w-full transition-colors placeholder:text-gray-300"
-                                placeholder="Type here..."
-                                defaultValue={item.deliverable === '-' ? '' : item.deliverable}
-                                onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, deliverable: e.target.value || '-' } : t))}
-                              />
                             </td>
                           );
                         case 'assignee':
                           return (
-                            <td key="assignee" className="px-4 py-3">
+                            <td key="assignee" className="px-6 py-4 text-sm">
                               <div className="flex items-center gap-2">
                                 <div
                                   className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[8px] font-bold text-white uppercase"
@@ -781,33 +689,9 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                               </div>
                             </td>
                           );
-                        case 'links':
-                          return (
-                            <td key="links" className="px-4 py-3">
-                              <div className="flex gap-2 items-center">
-                                {item.link ? (
-                                  <div className="flex gap-1 items-center">
-                                    <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
-                                      <LinkIcon size={14} />
-                                    </a>
-                                    <button onClick={() => setTracker(tracker.map(t => t.id === item.id ? { ...t, link: '' } : t))} className="text-gray-300 hover:text-red-500" title="Remove Link"><X size={12} /></button>
-                                  </div>
-                                ) : (
-                                  <button onClick={() => setLinkPrompt(item.id)} className="text-gray-300 hover:text-brand-accent transition-colors"><Plus size={14} /></button>
-                                )}
-                                {item.attachment ? (
-                                  <a href={item.attachment.path} download={item.attachment.name} className="text-emerald-500 hover:text-emerald-700" title={item.attachment.name}>
-                                    <Download size={14} />
-                                  </a>
-                                ) : (
-                                  <button onClick={() => fileInputRef.current?.click()} className="text-gray-300 hover:text-gray-500 transition-colors"><Paperclip size={14} /></button>
-                                )}
-                              </div>
-                            </td>
-                          );
                         case 'actions':
                           return (
-                            <td key="actions" className="px-4 py-3">
+                            <td key="actions" className="px-6 py-4 text-sm">
                               <div className="flex gap-1">
                                 {setFocusMode && (
                                   <button onClick={() => setFocusMode({ active: true, taskName: item.name, duration: 25, timeLeft: 25 * 60, timerActive: false })} className="text-gray-300 hover:text-brand-accent transition-colors" title="Focus mode">
@@ -844,13 +728,8 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
               {filteredTracker.filter(t => t.status === status).map(item => (
                 <Card key={item.id} className="p-4 cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 bg-white border border-gray-200 shadow-sm group">
                   <div className="flex justify-between items-start mb-3">
-                    <span className={cn(
-                      "text-[10px] font-bold uppercase px-2 py-1 rounded",
-                      item.priority === TaskPriority.EMERGENCY ? 'bg-red-100 text-red-600' :
-                      item.priority === TaskPriority.HIGH ? 'bg-orange-100 text-orange-600' :
-                      item.priority === TaskPriority.MEDIUM ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                    )}>
-                      {item.priority === TaskPriority.EMERGENCY ? '🚨 Emergency' : item.priority}
+                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded bg-gray-100 text-gray-600">
+                      📅 {item.date}
                     </span>
                     <div className="flex gap-1">
                       {setFocusMode && (
@@ -869,10 +748,17 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                       )}
                     </div>
                   </div>
-                  <h4 className="font-bold text-sm mb-1 text-gray-800">{item.name}</h4>
+                  <h4 className="font-bold text-sm mb-2 text-gray-800">{item.name}</h4>
                   <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                    <span className="bg-gray-100 px-1.5 py-0.5 rounded">{item.type}</span>
-                    <span className="truncate max-w-[120px]" title={item.deliverable}>{item.deliverable}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-1">
+                        <span>Progress</span>
+                        <span className="font-medium text-gray-700">{item.progress || 0}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${item.progress || 0}%` }} />
+                      </div>
+                    </div>
                   </div>
                   <div className="flex justify-between items-center pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                     <select

@@ -65,6 +65,7 @@ export interface TrackerItem {
   timeSlot?: number;
   archived?: boolean;
   completedAt?: string;
+  progress?: number;
 }
 
 export interface ContentItem {

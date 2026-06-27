@@ -38,6 +38,15 @@ export default function Dashboard() {
   const [focusMode, setFocusMode] = useState<{ active: boolean, taskName: string, duration: number, timeLeft: number, timerActive: boolean } | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(() => {
+    return localStorage.getItem('taskstudio_sidebar_minimized') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    const newState = !isSidebarMinimized;
+    setIsSidebarMinimized(newState);
+    localStorage.setItem('taskstudio_sidebar_minimized', String(newState));
+  };
 
   // Data States connected to Backend
   const queryClient = useQueryClient();
@@ -427,10 +436,18 @@ export default function Dashboard() {
   // --- App View ---
   return (
     <div className="flex min-h-screen">
-      <Sidebar currentSection={currentSection} setCurrentSection={setCurrentSection} session={session} storageUsed={storageUsed} handleLogout={handleLogout} />
+      <Sidebar 
+        currentSection={currentSection} 
+        setCurrentSection={setCurrentSection} 
+        session={session} 
+        storageUsed={storageUsed} 
+        handleLogout={handleLogout} 
+        isMinimized={isSidebarMinimized}
+        toggleMinimize={toggleSidebar}
+      />
       
       {/* Main Content Area */}
-      <main className="flex-1 ml-[18rem] flex flex-col min-h-screen">
+      <main className={cn("flex-1 flex flex-col min-h-screen transition-all duration-300", isSidebarMinimized ? "ml-[5rem]" : "ml-[18rem]")}>
         <Topbar currentSection={currentSection} savedIndicator={savedIndicator} showAIAssistant={showAIAssistant} setShowAIAssistant={setShowAIAssistant} setShowNotifications={setShowNotifications} setShowCommandPalette={setShowCommandPalette} onLogout={handleLogout} user={session.user} />
         
         {/* Page Content */}
