@@ -20,7 +20,10 @@ export enum TaskPriority {
   HIGH = 'high',
   MEDIUM = 'medium',
   LOW = 'low',
-  CREATIVE = 'creative'
+  CREATIVE = 'creative',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly'
 }
 
 export enum TaskStatus {

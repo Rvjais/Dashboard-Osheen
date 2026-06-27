@@ -20,7 +20,7 @@ const TrackerItem = sequelize.define('TrackerItem', {
     defaultValue: 'Task'
   },
   priority: {
-    type: DataTypes.ENUM('emergency', 'high', 'medium', 'low', 'creative'),
+    type: DataTypes.ENUM('emergency', 'high', 'medium', 'low', 'creative', 'daily', 'weekly', 'monthly'),
     defaultValue: 'medium'
   },
   status: {
@@ -62,6 +62,10 @@ const TrackerItem = sequelize.define('TrackerItem', {
   completedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  progress: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
 }, {
   tableName: 'tracker_items',

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, X, Link as LinkIcon, Paperclip, Trash2, History, Download, Clock, GripVertical, Filter } from 'lucide-react';
 import { format, parseISO, isSameDay, isSameWeek, isSameMonth } from 'date-fns';
@@ -31,6 +32,18 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   // Filter states
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
+  const [filterAnchor, setFilterAnchor] = useState<HTMLElement | null>(null);
+
+  const handleFilterClick = (e: React.MouseEvent, col: string) => {
+    e.stopPropagation();
+    if (activeFilterCol === col) {
+      setActiveFilterCol(null);
+      setFilterAnchor(null);
+    } else {
+      setActiveFilterCol(col);
+      setFilterAnchor(e.currentTarget as HTMLElement);
+    }
+  };
 
   const filteredTracker = useMemo(() => {
     return tracker.filter(item => {
@@ -38,6 +51,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
         if (!val) return true;
         switch (col) {
           case 'name': return (item.name || '').toLowerCase().includes(val.toLowerCase());
+          case 'priority': return item.priority === val;
           case 'status': return item.status === val;
           case 'assignee': return item.assigneeId === val;
           case 'dueDate': return item.date === val;
@@ -54,7 +68,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const required = ['checkbox', 'name', 'status', 'dueDate', 'progress', 'assignee', 'actions'];
+          const required = ['checkbox', 'name', 'priority', 'status', 'dueDate', 'progress', 'assignee', 'actions'];
           const hasAll = required.every(col => parsed.includes(col));
           if (hasAll && parsed.length === required.length) {
             return parsed;
@@ -67,6 +81,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
     return [
       'checkbox',
       'name',
+      'priority',
       'status',
       'dueDate',
       'progress',
@@ -151,19 +166,16 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
       return;
     }
 
-    const headers = ['Task Name', 'Type', 'Priority', 'Status', 'Deliverable', 'Assignee', 'Link', 'Notes', 'Date', 'Completed At'];
+    const headers = ['Task Name', 'Priority', 'Status', 'Assignee', 'Progress', 'Date', 'Completed At'];
     
     const rows = filteredTasks.map(item => {
       const assigneeName = team.find(m => m.id === item.assigneeId)?.name || 'Unassigned';
       return [
         item.name || '',
-        item.type || '',
         item.priority || '',
         item.status || '',
-        item.deliverable || '',
         assigneeName,
-        item.link || '',
-        item.notes || '',
+        item.progress || 0,
         item.date || '',
         item.completedAt || ''
       ].map(val => {
@@ -229,7 +241,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
       name: title,
       date: format(new Date(), 'yyyy-MM-dd'),
       type: 'Task',
-      priority: TaskPriority.MEDIUM,
+      priority: TaskPriority.DAILY,
       status: TaskStatus.TODO,
       deliverable: '-',
       assigneeId: session?.user.id || '',
@@ -263,8 +275,86 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 7);
 
+  const renderFilterPortal = () => {
+    if (!activeFilterCol || !filterAnchor) return null;
+    const rect = filterAnchor.getBoundingClientRect();
+    
+    return createPortal(
+      <>
+        <div className="fixed inset-0 z-[9998]" onClick={() => { setActiveFilterCol(null); setFilterAnchor(null); }} />
+        <div 
+          className="fixed bg-white border border-gray-200 shadow-xl rounded-lg p-3 z-[9999] min-w-[180px] font-normal cursor-default"
+          style={{ top: rect.bottom + 8, left: rect.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          {activeFilterCol === 'name' && (
+            <input
+              type="text"
+              placeholder="Filter by name..."
+              className="w-full text-sm p-2 border border-gray-200 rounded outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              value={columnFilters['name'] || ''}
+              onChange={(e) => setColumnFilters({ ...columnFilters, name: e.target.value })}
+              autoFocus
+            />
+          )}
+          {activeFilterCol === 'dueDate' && (
+            <input
+              type="date"
+              className="w-full text-sm p-2 border border-gray-200 rounded outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              value={columnFilters['dueDate'] || ''}
+              onChange={(e) => setColumnFilters({ ...columnFilters, dueDate: e.target.value })}
+            />
+          )}
+          {activeFilterCol === 'priority' && (
+            <select
+              className="w-full text-sm p-2 border border-gray-200 rounded outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              value={columnFilters['priority'] || ''}
+              onChange={(e) => setColumnFilters({ ...columnFilters, priority: e.target.value })}
+            >
+              <option value="">All Priorities</option>
+              <option value={TaskPriority.DAILY}>Daily</option>
+              <option value={TaskPriority.WEEKLY}>Weekly</option>
+              <option value={TaskPriority.MONTHLY}>Monthly</option>
+              <option value={TaskPriority.HIGH}>High</option>
+              <option value={TaskPriority.MEDIUM}>Medium</option>
+              <option value={TaskPriority.LOW}>Low</option>
+            </select>
+          )}
+          {activeFilterCol === 'status' && (
+            <select
+              className="w-full text-sm p-2 border border-gray-200 rounded outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              value={columnFilters['status'] || ''}
+              onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
+            >
+              <option value="">All Statuses</option>
+              {Object.values(TaskStatus).map(v => <option key={v} value={v}>
+                {v === TaskStatus.DONE ? '🟢 ' : 
+                 v === TaskStatus.IN_PROGRESS ? '🔵 ' : 
+                 v === TaskStatus.BLOCKED ? '🔴 ' : 
+                 v === TaskStatus.IN_REVIEW ? '🟡 ' : '⚪ '}
+                {v.replace('_', ' ')}
+              </option>)}
+            </select>
+          )}
+          {activeFilterCol === 'assignee' && (
+            <select
+              className="w-full text-sm p-2 border border-gray-200 rounded outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              value={columnFilters['assignee'] || ''}
+              onChange={(e) => setColumnFilters({ ...columnFilters, assignee: e.target.value })}
+            >
+              <option value="">All Assignees</option>
+              {team.map((m: User) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          )}
+        </div>
+      </>,
+      document.body
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {renderFilterPortal()}
       <div className="flex justify-between items-end flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-display font-bold flex items-center gap-3">
@@ -416,26 +506,10 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                 <GripVertical size={12} className="text-gray-400 shrink-0" />
                                 <span>Task Name</span>
                               </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'name' ? null : 'name')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['name'] && "text-brand-accent")}>
+                              <button onClick={(e) => handleFilterClick(e, 'name')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['name'] && "text-brand-accent")}>
                                 <Filter size={12} />
                               </button>
                             </div>
-                            {activeFilterCol === 'name' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <input
-                                  type="text"
-                                  placeholder="Filter by name..."
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['name'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, name: e.target.value })}
-                                />
-                              </div>
-                            )}
                           </th>
                         );
                       case 'dueDate':
@@ -456,25 +530,10 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                 <GripVertical size={14} className="text-gray-400 shrink-0" />
                                 <span>Due Date</span>
                               </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'dueDate' ? null : 'dueDate')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['dueDate'] && "text-brand-accent")}>
+                              <button onClick={(e) => handleFilterClick(e, 'dueDate')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['dueDate'] && "text-brand-accent")}>
                                 <Filter size={14} />
                               </button>
                             </div>
-                            {activeFilterCol === 'dueDate' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <input
-                                  type="date"
-                                  className="w-full text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['dueDate'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, dueDate: e.target.value })}
-                                />
-                              </div>
-                            )}
                           </th>
                         );
                       case 'progress':
@@ -495,7 +554,32 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                               <span>Progress</span>
                             </div>
                           </th>
-                        );case 'status':
+                        );
+                      case 'priority':
+                        return (
+                          <th 
+                            key="priority" 
+                            draggable 
+                            onDragStart={(e) => handleDragStart(e, 'priority')}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, 'priority')}
+                            className={cn(
+                              "px-6 py-4 text-sm cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
+                              draggedCol === 'priority' && "opacity-50 border-2 border-dashed border-brand-accent"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Priority</span>
+                              </div>
+                              <button onClick={(e) => handleFilterClick(e, 'priority')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['priority'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
+                            </div>
+                          </th>
+                        );
+                      case 'status':
                         return (
                           <th 
                             key="status" 
@@ -513,33 +597,10 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                 <GripVertical size={12} className="text-gray-400 shrink-0" />
                                 <span>Status</span>
                               </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'status' ? null : 'status')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['status'] && "text-brand-accent")}>
+                              <button onClick={(e) => handleFilterClick(e, 'status')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['status'] && "text-brand-accent")}>
                                 <Filter size={12} />
                               </button>
                             </div>
-                            {activeFilterCol === 'status' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <select
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['status'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
-                                >
-                                  <option value="">All Statuses</option>
-                                  {Object.values(TaskStatus).map(v => <option key={v} value={v}>
-                                    {v === TaskStatus.DONE ? '🟢 ' : 
-                                     v === TaskStatus.IN_PROGRESS ? '🔵 ' : 
-                                     v === TaskStatus.BLOCKED ? '🔴 ' : 
-                                     v === TaskStatus.IN_REVIEW ? '🟡 ' : '⚪ '}
-                                    {v.replace('_', ' ')}
-                                  </option>)}
-                                </select>
-                              </div>
-                            )}
                           </th>
                         );
                       case 'assignee':
@@ -560,27 +621,10 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                 <GripVertical size={12} className="text-gray-400 shrink-0" />
                                 <span>Assignee</span>
                               </div>
-                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'assignee' ? null : 'assignee')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['assignee'] && "text-brand-accent")}>
+                              <button onClick={(e) => handleFilterClick(e, 'assignee')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['assignee'] && "text-brand-accent")}>
                                 <Filter size={12} />
                               </button>
                             </div>
-                            {activeFilterCol === 'assignee' && (
-                              <div 
-                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
-                                onClick={e => e.stopPropagation()}
-                                draggable={true}
-                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                <select
-                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
-                                  value={columnFilters['assignee'] || ''}
-                                  onChange={(e) => setColumnFilters({ ...columnFilters, assignee: e.target.value })}
-                                >
-                                  <option value="">All Assignees</option>
-                                  {team.map((m: User) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
-                              </div>
-                            )}
                           </th>
                         );
                       case 'actions':
@@ -643,7 +687,30 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                                 <span className="text-sm text-gray-500">%</span>
                               </div>
                             </td>
-                          );case 'status':
+                          );
+                        case 'priority':
+                          return (
+                            <td key="priority" className="px-6 py-4 text-sm">
+                              <select
+                                className={cn("px-3 py-1.5 rounded-full text-xs font-bold focus:outline-none shadow-sm cursor-pointer",
+                                  item.priority === TaskPriority.DAILY ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                  item.priority === TaskPriority.WEEKLY ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                  item.priority === TaskPriority.MONTHLY ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                                  'bg-gray-50 text-gray-700 border border-gray-200'
+                                )}
+                                value={item.priority || ''}
+                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, priority: e.target.value as TaskPriority } : t))}
+                              >
+                                <option value={TaskPriority.DAILY}>Daily</option>
+                                <option value={TaskPriority.WEEKLY}>Weekly</option>
+                                <option value={TaskPriority.MONTHLY}>Monthly</option>
+                                <option value={TaskPriority.HIGH}>High</option>
+                                <option value={TaskPriority.MEDIUM}>Medium</option>
+                                <option value={TaskPriority.LOW}>Low</option>
+                              </select>
+                            </td>
+                          );
+                        case 'status':
                           return (
                             <td key="status" className="px-6 py-4 text-sm">
                               <select
