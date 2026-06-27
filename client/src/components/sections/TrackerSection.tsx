@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, X, Link as LinkIcon, Paperclip, Trash2, History, Download, Clock, GripVertical } from 'lucide-react';
+import { Plus, X, Link as LinkIcon, Paperclip, Trash2, History, Download, Clock, GripVertical, Filter } from 'lucide-react';
 import { format, parseISO, isSameDay, isSameWeek, isSameMonth } from 'date-fns';
 import { cn } from '../../lib/utils';
 import Button from '../ui/Button';
@@ -27,6 +27,27 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   const [quickInput, setQuickInput] = useState('');
   const [timelineDate, setTimelineDate] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Filter states
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
+
+  const filteredTracker = useMemo(() => {
+    return tracker.filter(item => {
+      return Object.entries(columnFilters).every(([col, val]) => {
+        if (!val) return true;
+        switch (col) {
+          case 'name': return (item.name || '').toLowerCase().includes(val.toLowerCase());
+          case 'type': return item.type === val;
+          case 'priority': return item.priority === val;
+          case 'status': return item.status === val;
+          case 'assignee': return item.assigneeId === val;
+          case 'deliverable': return (item.deliverable || '').toLowerCase().includes(val.toLowerCase());
+          default: return true;
+        }
+      });
+    });
+  }, [tracker, columnFilters]);
 
   // Column order and drag states
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -177,13 +198,13 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
     return raw as TrackerItem[];
   }, [historyData]);
 
-  const allSelected = tracker.length > 0 && selectedIds.size === tracker.length;
+  const allSelected = filteredTracker.length > 0 && selectedIds.size === filteredTracker.length;
 
   const toggleSelectAll = () => {
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(tracker.map(t => t.id)));
+      setSelectedIds(new Set(filteredTracker.map(t => t.id)));
     }
   };
 
@@ -225,7 +246,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   };
 
   const timelineItems = useMemo(() =>
-    tracker
+    filteredTracker
       .filter(t => t.date && isSameDay(parseISO(t.date), timelineDate))
       .map(t => ({
         ...t,
@@ -400,14 +421,35 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'name')}
                             className={cn(
-                              "px-4 py-3 min-w-[200px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 min-w-[200px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'name' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Task Name</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Task Name</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'name' ? null : 'name')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['name'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'name' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="Filter by name..."
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['name'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, name: e.target.value })}
+                                />
+                              </div>
+                            )}
                           </th>
                         );
                       case 'type':
@@ -419,14 +461,36 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'type')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'type' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Type</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Type</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'type' ? null : 'type')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['type'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'type' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <select
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['type'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, type: e.target.value })}
+                                >
+                                  <option value="">All Types</option>
+                                  {['Task', 'Deliverable', 'Meeting', 'Creative', 'Note', 'Journal', 'Content'].map(v => <option key={v} value={v}>{v}</option>)}
+                                </select>
+                              </div>
+                            )}
                           </th>
                         );
                       case 'priority':
@@ -438,14 +502,36 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'priority')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'priority' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Priority</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Priority</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'priority' ? null : 'priority')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['priority'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'priority' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <select
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['priority'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, priority: e.target.value })}
+                                >
+                                  <option value="">All Priorities</option>
+                                  {Object.values(TaskPriority).map(v => <option key={v} value={v}>{v}</option>)}
+                                </select>
+                              </div>
+                            )}
                           </th>
                         );
                       case 'status':
@@ -457,14 +543,36 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'status')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'status' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Status</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Status</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'status' ? null : 'status')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['status'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'status' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <select
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['status'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
+                                >
+                                  <option value="">All Statuses</option>
+                                  {Object.values(TaskStatus).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+                                </select>
+                              </div>
+                            )}
                           </th>
                         );
                       case 'deliverable':
@@ -476,14 +584,35 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'deliverable')}
                             className={cn(
-                              "px-4 py-3 min-w-[150px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 min-w-[150px] cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'deliverable' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Deliverable</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Deliverable</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'deliverable' ? null : 'deliverable')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['deliverable'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'deliverable' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="Filter by deliverable..."
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['deliverable'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, deliverable: e.target.value })}
+                                />
+                              </div>
+                            )}
                           </th>
                         );
                       case 'assignee':
@@ -495,14 +624,36 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, 'assignee')}
                             className={cn(
-                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none",
+                              "px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors select-none relative",
                               draggedCol === 'assignee' && "opacity-50 border-2 border-dashed border-brand-accent"
                             )}
                           >
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical size={12} className="text-gray-400 shrink-0" />
-                              <span>Assignee</span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <GripVertical size={12} className="text-gray-400 shrink-0" />
+                                <span>Assignee</span>
+                              </div>
+                              <button onClick={() => setActiveFilterCol(activeFilterCol === 'assignee' ? null : 'assignee')} className={cn("p-1 rounded hover:bg-gray-200", columnFilters['assignee'] && "text-brand-accent")}>
+                                <Filter size={12} />
+                              </button>
                             </div>
+                            {activeFilterCol === 'assignee' && (
+                              <div 
+                                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-lg rounded p-2 z-10 min-w-[150px] font-normal cursor-default" 
+                                onClick={e => e.stopPropagation()}
+                                draggable={true}
+                                onDragStart={e => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <select
+                                  className="w-full text-xs p-1.5 border border-gray-200 rounded outline-none focus:border-brand-accent"
+                                  value={columnFilters['assignee'] || ''}
+                                  onChange={(e) => setColumnFilters({ ...columnFilters, assignee: e.target.value })}
+                                >
+                                  <option value="">All Assignees</option>
+                                  {team.map((m: User) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
+                              </div>
+                            )}
                           </th>
                         );
                       case 'links':
@@ -535,7 +686,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                 </tr>
               </thead>
               <tbody>
-                {tracker.map(item => (
+                {filteredTracker.map(item => (
                   <tr key={item.id} className="border-b last:border-none border-gray-100 hover:bg-gray-50/50 transition-colors">
                     {columnOrder.map(colId => {
                       switch (colId) {
@@ -686,11 +837,11 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-xs uppercase tracking-widest text-gray-500">{status.replace('_', ' ')}</h3>
                 <span className="text-xs font-bold bg-white text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">
-                  {tracker.filter(t => t.status === status).length}
+                  {filteredTracker.filter(t => t.status === status).length}
                 </span>
               </div>
 
-              {tracker.filter(t => t.status === status).map(item => (
+              {filteredTracker.filter(t => t.status === status).map(item => (
                 <Card key={item.id} className="p-4 cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 bg-white border border-gray-200 shadow-sm group">
                   <div className="flex justify-between items-start mb-3">
                     <span className={cn(
