@@ -1,29 +1,34 @@
 import Card from '../ui/Card';
-import { MeetingNote, Task } from '../../types';
+import { MeetingNote, TrackerItem, TaskStatus } from '../../types';
 
 interface ScheduleWidgetProps {
   meetingNotes: MeetingNote[];
-  tasks: Task[];
+  tracker: TrackerItem[];
 }
 
-const ScheduleWidget = ({ meetingNotes, tasks }: ScheduleWidgetProps) => {
+const ScheduleWidget = ({ meetingNotes, tracker }: ScheduleWidgetProps) => {
+  const todayStr = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  
   const todayItems = [
-    ...meetingNotes.filter((m: MeetingNote) => new Date(m.date).toDateString() === new Date().toDateString()).map((m: MeetingNote) => ({ time: new Date(m.date), label: `Meeting: ${m.title}`, type: 'meeting' })),
-    ...tasks.filter((t: Task) => t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString()).map((t: Task) => ({ time: new Date(t.dueDate), label: `Task Due: ${t.title}`, type: 'task' }))
-  ].sort((a, b) => a.time.getTime() - b.time.getTime());
+    ...meetingNotes
+      .filter((m: MeetingNote) => m.date && m.date.startsWith(todayStr))
+      .map((m: MeetingNote) => ({ label: `Meeting: ${m.title}`, type: 'meeting' })),
+    ...tracker
+      .filter((t: TrackerItem) => t.date === todayStr && t.status !== TaskStatus.DONE)
+      .map((t: TrackerItem) => ({ label: `Task: ${t.name}`, type: 'task' }))
+  ];
 
   return (
     <Card title="Today's Schedule" subtitle={todayItems.length > 0 ? "Upcoming items" : "No events scheduled"} className="h-full">
       <div className="space-y-4">
         {todayItems.length > 0 ? todayItems.map((item, idx) => (
           <div key={idx} className="flex gap-4 items-start group">
-            <span className="w-12 text-[10px] font-mono text-gray-400 pt-1">
-              {item.time.getHours() > 12 ? item.time.getHours() - 12 : (item.time.getHours() === 0 ? 12 : item.time.getHours())}:00 {item.time.getHours() >= 12 ? 'PM' : 'AM'}
+            <span className="w-6 text-[12px] pt-0.5 flex justify-center">
+              {item.type === 'meeting' ? '🗓️' : '📋'}
             </span>
             <div className="relative flex-1 pb-4">
-              <div className="absolute left-[-17px] top-[6px] w-2 h-2 rounded-full border-2 border-white bg-gray-200 group-hover:bg-brand-accent group-hover:scale-125 transition-all" />
-              <div className="h-[1px] w-full bg-gray-100 group-hover:bg-gray-200" />
-              <div className="mt-2 text-xs text-gray-400 group-hover:text-gray-700 transition-colors">
+              <div className="h-[1px] w-full bg-gray-100 group-hover:bg-gray-200 mt-2" />
+              <div className="mt-2 text-xs font-medium text-gray-600 group-hover:text-gray-900 transition-colors">
                 {item.label}
               </div>
             </div>

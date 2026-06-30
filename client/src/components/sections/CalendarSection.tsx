@@ -3,39 +3,79 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterv
 import { cn } from '../../lib/utils';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
-import { ContentItem, Task, MeetingNote } from '../../types';
+import Modal from '../ui/Modal';
+import { ContentItem, Task, MeetingNote, TrackerItem, TaskPriority, TaskStatus } from '../../types';
+import { X, Trash2 } from 'lucide-react';
 
 interface CalendarSectionProps {
   contentCalendar: ContentItem[];
   setContentCalendar: (items: ContentItem[]) => void;
-  tasks: Task[];
+  tracker?: TrackerItem[];
+  setTracker?: (items: TrackerItem[]) => void;
+  tasks?: Task[]; // Keeping for backwards compatibility if needed
   meetingNotes: MeetingNote[];
+  setMeetingNotes?: (items: MeetingNote[]) => void;
   session: { user: { id: string } };
 }
 
-const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNotes, session }: CalendarSectionProps) => {
+const CalendarSection = ({ contentCalendar, setContentCalendar, tracker = [], setTracker, meetingNotes, setMeetingNotes, session }: CalendarSectionProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addType, setAddType] = useState<'task' | 'meeting' | 'content'>('task');
+  const [eventTitle, setEventTitle] = useState('');
+
+  const [viewEvent, setViewEvent] = useState<{type: 'task' | 'meeting' | 'content', id: string, title: string, date: string} | null>(null);
 
   const days = eachDayOfInterval({
     start: startOfMonth(currentMonth),
     end: endOfMonth(currentMonth)
   });
 
-  const upcomingItem = useMemo(() => {
-    return [...contentCalendar]
-      .filter(item => isAfter(parseISO(item.publishDate), new Date()) || isSameDay(parseISO(item.publishDate), new Date()))
-      .sort((a, b) => parseISO(a.publishDate).getTime() - parseISO(b.publishDate).getTime())[0];
-  }, [contentCalendar]);
+  const handleAddEvent = () => {
+    if (!selectedDate || !eventTitle.trim()) return;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    
+    if (addType === 'task' && setTracker) {
+      setTracker([...tracker, {
+        id: crypto.randomUUID(), name: eventTitle, date: dateStr, type: 'Task',
+        priority: TaskPriority.MEDIUM, status: TaskStatus.TODO, deliverable: '-',
+        assigneeId: session.user.id, link: '', notes: ''
+      }]);
+    } else if (addType === 'meeting' && setMeetingNotes) {
+      setMeetingNotes([...meetingNotes, {
+        id: crypto.randomUUID(), title: eventTitle, date: dateStr, type: 'Meeting',
+        attendees: [], notes: '', actionItems: '', link: ''
+      }]);
+    } else if (addType === 'content') {
+      setContentCalendar([...contentCalendar, {
+        id: crypto.randomUUID(), title: eventTitle, publishDate: dateStr, platform: 'General', type: 'Post',
+        creatorId: session.user.id, stage: 'Draft', link: '', goal: '', caption: '', notes: ''
+      }]);
+    }
+    
+    setAddModalOpen(false);
+    setEventTitle('');
+  };
+
+  const handleDeleteEvent = () => {
+    if (!viewEvent) return;
+    if (viewEvent.type === 'task' && setTracker) setTracker(tracker.filter(t => t.id !== viewEvent.id));
+    else if (viewEvent.type === 'meeting' && setMeetingNotes) setMeetingNotes(meetingNotes.filter(m => m.id !== viewEvent.id));
+    else if (viewEvent.type === 'content') setContentCalendar(contentCalendar.filter(c => c.id !== viewEvent.id));
+    setViewEvent(null);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-display font-bold flex items-center gap-3">
-            📆 Content Calendar
+            📆 Calendar
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Plan and schedule multi-platform content assets.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage your schedule, tasks, and content assets.</p>
         </div>
         <div className="flex bg-gray-100 p-1 rounded-xl">
            <button className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'calendar' ? 'bg-white shadow-sm' : 'text-gray-500')} onClick={() => setViewMode('calendar')}>Calendar</button>
@@ -44,27 +84,9 @@ const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNo
       </div>
 
       {viewMode === 'list' ? (
-        <Card title="All Content" subtitle={`${contentCalendar.length} items`}>
+        <Card title="All Items" subtitle="Upcoming and past events">
           <div className="space-y-2">
-            {contentCalendar.length === 0 ? (
-              <p className="text-sm text-gray-400 py-8 text-center">No content items yet. Click a day to add one.</p>
-            ) : (
-              [...contentCalendar]
-                .sort((a, b) => parseISO(a.publishDate).getTime() - parseISO(b.publishDate).getTime())
-                .map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xs font-mono text-gray-400 shrink-0">{format(parseISO(item.publishDate), 'MMM dd')}</span>
-                      <span className="text-xs font-bold text-gray-900 truncate">{item.title}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 shrink-0">{item.platform}</span>
-                    </div>
-                    <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold shrink-0",
-                      item.stage === 'Published' ? 'bg-emerald-100 text-emerald-600' :
-                      item.stage === 'Draft' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-600'
-                    )}>{item.stage}</span>
-                  </div>
-                ))
-            )}
+            <p className="text-sm text-gray-400 py-8 text-center">Switch to calendar view to manage items.</p>
           </div>
         </Card>
       ) : (
@@ -84,43 +106,135 @@ const CalendarSection = ({ contentCalendar, setContentCalendar, tasks, meetingNo
         <div className="grid grid-cols-7">
           {days.map((day) => {
             const dayContent = contentCalendar.filter(c => isSameDay(parseISO(c.publishDate), day));
-            const hasContent = dayContent.length > 0;
+            const dayTasks = tracker.filter(t => t.date && isSameDay(parseISO(t.date), day));
+            const dayMeetings = meetingNotes.filter(m => m.date && isSameDay(parseISO(m.date), day));
+            
+            const hasItems = dayContent.length > 0 || dayTasks.length > 0 || dayMeetings.length > 0;
             
             return (
               <div key={day.toString()} className={cn(
-                "min-h-[120px] p-3 border-r border-b border-gray-50 transition-all hover:bg-gray-50 cursor-pointer group relative", 
-                !isSameMonth(day, currentMonth) && "opacity-30",
-                hasContent && "bg-brand-accent/[0.02]"
-              )} onClick={() => {
-                const title = prompt(`Add content for ${format(day, 'MMM dd, yyyy')}:`);
-                if (title) {
-                  setContentCalendar([...contentCalendar, { id: crypto.randomUUID(), title, publishDate: format(day, 'yyyy-MM-dd'), platform: 'Twitter', type: 'Post', creatorId: session.user.id, stage: 'Draft', link: '', goal: '', caption: '', notes: '' }]);
-                }
+                "min-h-[120px] p-2 border-r border-b border-gray-50 transition-all hover:bg-gray-50 group relative flex flex-col gap-1", 
+                !isSameMonth(day, currentMonth) && "opacity-40",
+                hasItems && "bg-brand-accent/[0.01]"
+              )} 
+              onClick={() => {
+                setSelectedDate(day);
+                setAddModalOpen(true);
               }}>
-                 <div className="flex justify-between items-start">
+                 <div className="flex justify-between items-start mb-1">
                     <span className={cn(
                       "text-xs font-mono font-medium", 
                       isToday(day) ? "w-6 h-6 rounded-full bg-brand-accent text-white flex items-center justify-center -ml-1 -mt-1" : "text-gray-500"
                     )}>
                       {format(day, 'd')}
                     </span>
-                    {hasContent && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-brand-accent shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.4)]" />
-                    )}
                  </div>
-                 <div className="mt-2 space-y-1">
-                    {dayContent.map(item => (
-                      <div key={item.id} className="text-[9px] px-1.5 py-1 rounded-md bg-blue-50/80 text-blue-600 font-bold truncate border border-blue-100/50 group-hover:bg-blue-100/50 transition-colors">
-                        {item.platform}: {item.title}
-                      </div>
-                    ))}
-                 </div>
+                 
+                 {/* Meetings */}
+                 {dayMeetings.map(m => (
+                    <div 
+                      key={m.id} 
+                      onClick={(e) => { e.stopPropagation(); setViewEvent({ type: 'meeting', id: m.id, title: m.title, date: m.date }); }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium truncate cursor-pointer hover:bg-blue-200 transition-colors"
+                    >
+                      🗓️ {m.title}
+                    </div>
+                 ))}
+                 
+                 {/* Tasks */}
+                 {dayTasks.map(t => (
+                    <div 
+                      key={t.id} 
+                      onClick={(e) => { e.stopPropagation(); setViewEvent({ type: 'task', id: t.id, title: t.name, date: t.date }); }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium truncate cursor-pointer hover:bg-amber-200 transition-colors"
+                    >
+                      📋 {t.name}
+                    </div>
+                 ))}
+
+                 {/* Content */}
+                 {dayContent.map(c => (
+                    <div 
+                      key={c.id} 
+                      onClick={(e) => { e.stopPropagation(); setViewEvent({ type: 'content', id: c.id, title: c.title, date: c.publishDate }); }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium truncate cursor-pointer hover:bg-emerald-200 transition-colors"
+                    >
+                      📱 {c.title}
+                    </div>
+                 ))}
               </div>
             );
           })}
         </div>
       </Card>
       )}
+
+      {/* Add Event Modal */}
+      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)}>
+        <div className="p-6 w-full max-w-md bg-white rounded-2xl">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold font-display text-gray-900">Add to Calendar</h3>
+            <button onClick={() => setAddModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+          </div>
+          
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-500 mb-2">DATE</p>
+            <p className="text-sm font-medium">{selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</p>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-500 mb-2">EVENT TYPE</p>
+            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+              <button onClick={() => setAddType('task')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", addType === 'task' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:bg-gray-200')}>Task</button>
+              <button onClick={() => setAddType('meeting')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", addType === 'meeting' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:bg-gray-200')}>Meeting</button>
+              <button onClick={() => setAddType('content')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", addType === 'content' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:bg-gray-200')}>Content</button>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-xs font-bold text-gray-500 mb-2">TITLE</p>
+            <input 
+              type="text"
+              autoFocus
+              className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-brand-accent focus:ring-1 ring-brand-accent"
+              placeholder="E.g., Team Sync, Weekly Report..."
+              value={eventTitle}
+              onChange={(e) => setEventTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddEvent}>Add Event</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* View Event Modal */}
+      <Modal open={!!viewEvent} onClose={() => setViewEvent(null)}>
+        {viewEvent && (
+          <div className="p-6 w-full max-w-sm bg-white rounded-2xl relative">
+            <button onClick={() => setViewEvent(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            <div className="mb-2">
+               <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded", 
+                  viewEvent.type === 'task' ? 'bg-amber-100 text-amber-600' : 
+                  viewEvent.type === 'meeting' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+               )}>
+                 {viewEvent.type}
+               </span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">{viewEvent.title}</h3>
+            <p className="text-sm text-gray-500 mb-6">{format(parseISO(viewEvent.date), 'MMMM d, yyyy')}</p>
+            
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <Button variant="danger" className="w-full gap-2 justify-center" onClick={handleDeleteEvent}>
+                <Trash2 size={16} /> Delete {viewEvent.type}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

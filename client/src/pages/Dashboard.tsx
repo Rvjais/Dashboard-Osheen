@@ -385,10 +385,12 @@ export default function Dashboard() {
           setHomeWidgets={setHomeWidgets}
           setIdeas={setIdeas}
           setTasks={setTasks}
+          tracker={tracker}
+          setTracker={setTracker}
         />
       );
       case Section.TRACKER: return <TrackerSection tracker={tracker} setTracker={setTracker} session={session} team={team} setFocusMode={setFocusMode} setCurrentSection={setCurrentSection} />;
-      case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tasks={tasks} meetingNotes={meetingNotes} session={session} />;
+      case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tracker={tracker} setTracker={setTracker} meetingNotes={meetingNotes} setMeetingNotes={setMeetingNotes} session={session} />;
 
       case Section.REPORTS: return <ReportsSection team={team} tasks={tasks} />;
       case Section.TEAM: return (
@@ -415,11 +417,17 @@ export default function Dashboard() {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    const dueTasks = tasks.filter((t: any) => !t.done && t.dueDate && t.dueDate < todayStr);
-    if (dueTasks.length > 0) notificationsList.push({ id: 't1', title: 'Overdue Tasks', time: 'Action Required', msg: `${dueTasks.length} tasks are overdue.`, type: 'alert' });
+    // Tracker Tasks (instead of general Tasks)
+    const dueTrackerTasks = tracker.filter((t: any) => t.status !== 'done' && t.date && t.date < todayStr);
+    if (dueTrackerTasks.length > 0) notificationsList.push({ id: 'tt1', title: 'Overdue Tasks', time: 'Action Required', msg: `${dueTrackerTasks.length} tracker tasks are overdue.`, type: 'alert' });
     
-    const todayTasks = tasks.filter((t: any) => !t.done && t.dueDate === todayStr);
-    if (todayTasks.length > 0) notificationsList.push({ id: 't2', title: 'Tasks Due Today', time: 'Today', msg: `You have ${todayTasks.length} tasks due today.`, type: 'meeting' });
+    const todayTrackerTasks = tracker.filter((t: any) => t.status !== 'done' && t.date === todayStr);
+    if (todayTrackerTasks.length > 0) notificationsList.push({ id: 'tt2', title: 'Tasks Due Today', time: 'Today', msg: `You have ${todayTrackerTasks.length} tasks to complete today.`, type: 'alert' });
+
+    // Periodic reminder (e.g. if it's past 12 PM or 3 PM and tasks are still incomplete)
+    if (now.getHours() >= 12 && todayTrackerTasks.length > 0) {
+      notificationsList.push({ id: 'rem1', title: 'Pending Tasks Reminder', time: 'Just now', msg: `Don't forget! You still have ${todayTrackerTasks.length} tasks to finish today.`, type: 'alert' });
+    }
 
     const todayMeetings = meetingNotes.filter((m: any) => m.date === todayStr || (m.date && m.date.startsWith(todayStr)));
     if (todayMeetings.length > 0) notificationsList.push({ id: 'm1', title: 'Meetings Today', time: 'Today', msg: `You have ${todayMeetings.length} meetings scheduled today.`, type: 'meeting' });
@@ -428,10 +436,16 @@ export default function Dashboard() {
 
     if (ideas.length > 0) notificationsList.push({ id: 'i1', title: 'Ideas Captured', time: 'Recent', msg: `You have ${ideas.length} ideas waiting to be reviewed.`, type: 'idea' });
     
+    // Check if new task added today
+    const tasksCreatedToday = tracker.filter((t: any) => t.date === todayStr);
+    if (tasksCreatedToday.length > 0) {
+      notificationsList.push({ id: 'tnew', title: 'New Tasks Added', time: 'Today', msg: `${tasksCreatedToday.length} task(s) added to the tracker today.`, type: 'idea' });
+    }
+
     if (notificationsList.length === 0) notificationsList.push({ id: '0', title: 'All Caught Up', time: 'Now', msg: 'No pending alerts or meetings. Great job!', type: 'idea' });
     
     return notificationsList;
-  }, [tasks, meetingNotes, ideas, unreadCount]);
+  }, [tracker, meetingNotes, ideas, unreadCount, currentTime]);
 
   // --- App View ---
   return (
@@ -448,7 +462,17 @@ export default function Dashboard() {
       
       {/* Main Content Area */}
       <main className={cn("flex-1 flex flex-col min-h-screen transition-all duration-300", isSidebarMinimized ? "ml-[5rem]" : "ml-[18rem]")}>
-        <Topbar currentSection={currentSection} savedIndicator={savedIndicator} showAIAssistant={showAIAssistant} setShowAIAssistant={setShowAIAssistant} setShowNotifications={setShowNotifications} setShowCommandPalette={setShowCommandPalette} onLogout={handleLogout} user={session.user} />
+        <Topbar 
+          currentSection={currentSection} 
+          savedIndicator={savedIndicator} 
+          showAIAssistant={showAIAssistant} 
+          setShowAIAssistant={setShowAIAssistant} 
+          setShowNotifications={setShowNotifications} 
+          setShowCommandPalette={setShowCommandPalette} 
+          onLogout={handleLogout} 
+          user={session.user} 
+          hasUnreadNotifications={notifs.length > 0 && notifs[0].id !== '0'} 
+        />
         
         {/* Page Content */}
         <div className="flex-1 p-8 max-w-[1600px] w-full mx-auto overflow-y-auto">

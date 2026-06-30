@@ -16,9 +16,10 @@ interface TopbarProps {
   setShowCommandPalette: (v: boolean) => void;
   onLogout?: () => void;
   user?: User;
+  hasUnreadNotifications?: boolean;
 }
 
-const Topbar = ({ currentSection, savedIndicator, showAIAssistant, setShowAIAssistant, setShowNotifications, setShowCommandPalette, onLogout, user }: TopbarProps) => {
+const Topbar = ({ currentSection, savedIndicator, showAIAssistant, setShowAIAssistant, setShowNotifications, setShowCommandPalette, onLogout, user, hasUnreadNotifications }: TopbarProps) => {
   const { updateUser } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -80,7 +81,9 @@ const Topbar = ({ currentSection, savedIndicator, showAIAssistant, setShowAIAssi
         </AnimatePresence>
         <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotifications(true)}>
           <Bell size={18} />
-          <div className="absolute top-2 right-2 w-2 h-2 bg-brand-accent rounded-full border-2 border-white" />
+          {hasUnreadNotifications && (
+            <div className="absolute top-2 right-2 w-2 h-2 bg-brand-accent rounded-full border-2 border-white" />
+          )}
         </Button>
         <Button size="sm" className="gap-2" onClick={() => setShowCommandPalette(true)}>
           <Plus size={16} /> Quick Add

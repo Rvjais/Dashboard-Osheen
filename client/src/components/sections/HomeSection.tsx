@@ -16,11 +16,12 @@ import StatsWidget from '../widgets/StatsWidget';
 import ScheduleWidget from '../widgets/ScheduleWidget';
 import TasksWidget from '../widgets/TasksWidget';
 import IdeasWidget from '../widgets/IdeasWidget';
-import { Section, User, Task, MeetingNote, Idea } from '../../types';
+import { Section, User, Task, MeetingNote, Idea, TrackerItem } from '../../types';
 
 interface HomeSectionProps {
   session: { user: User } | null;
   tasks: Task[];
+  tracker: TrackerItem[];
   meetingNotes: MeetingNote[];
   ideas: Idea[];
   team: User[];
@@ -33,11 +34,12 @@ interface HomeSectionProps {
   setHomeWidgets: (widgets: { id: string; span: string; visible?: boolean }[]) => void;
   setIdeas: (ideas: Idea[]) => void;
   setTasks: (tasks: Task[]) => void;
+  setTracker: (tracker: TrackerItem[]) => void;
 }
 
 const HomeSection = ({
-  session, tasks, meetingNotes, ideas, team, dayScore, dailyBrief, currentTime, updateMood, setCurrentSection,
-  homeWidgets, setHomeWidgets, setIdeas, setTasks
+  session, tasks, tracker, meetingNotes, ideas, team, dayScore, dailyBrief, currentTime, updateMood, setCurrentSection,
+  homeWidgets, setHomeWidgets, setIdeas, setTasks, setTracker
 }: HomeSectionProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const sensors = useSensors(
@@ -59,8 +61,8 @@ const HomeSection = ({
       case 'welcome': return <WelcomeWidget session={session} dailyBrief={dailyBrief} updateMood={updateMood} dayScore={dayScore} />;
       case 'clock': return <ClockWidget currentTime={currentTime} team={team} />;
       case 'stats': return <StatsWidget tasks={tasks} meetingNotes={meetingNotes} ideas={ideas} />;
-      case 'schedule': return <ScheduleWidget meetingNotes={meetingNotes} tasks={tasks} />;
-      case 'tasks': return <TasksWidget tasks={tasks} setTasks={setTasks} />;
+      case 'schedule': return <ScheduleWidget meetingNotes={meetingNotes} tracker={tracker} />;
+      case 'tasks': return <TasksWidget tracker={tracker} setTracker={setTracker} />;
       case 'ideas': return <IdeasWidget ideas={ideas} setIdeas={setIdeas} />;
       default: return null;
     }
