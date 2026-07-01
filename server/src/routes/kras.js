@@ -3,11 +3,16 @@ const router = express.Router();
 const { Kra, User } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
 
-// Get KRAs (all users can view)
+// Get KRAs
 router.get('/', auth, async (req, res) => {
   try {
     const { userId } = req.query;
-    const whereClause = userId ? { userId } : {};
+    let whereClause = {};
+    if (req.user.role !== 'admin') {
+      whereClause.userId = userId || req.userId;
+    } else if (userId) {
+      whereClause.userId = userId;
+    }
 
     const kras = await Kra.findAll({
       where: whereClause,

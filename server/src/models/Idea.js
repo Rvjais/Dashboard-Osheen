@@ -17,7 +17,8 @@ const Idea = sequelize.define('Idea', {
   },
   date: {
     type: DataTypes.DATEONLY,
-    allowNull: false
+    allowNull: false,
+    defaultValue: DataTypes.NOW
   },
   userId: {
     type: DataTypes.UUID,

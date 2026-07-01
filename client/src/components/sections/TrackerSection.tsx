@@ -28,6 +28,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   const [quickInput, setQuickInput] = useState('');
   const [timelineDate, setTimelineDate] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
 
   // Filter states
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
@@ -237,7 +238,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
   const quickAddItem = (title: string) => {
     if (!title.trim()) return;
     const newItem: TrackerItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: title,
       date: format(new Date(), 'yyyy-MM-dd'),
       type: 'Task',
@@ -258,7 +259,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
       .filter(t => t.date && isSameDay(parseISO(t.date), timelineDate))
       .map(t => ({
         ...t,
-        completedTimeSlot: t.completedAt && isSameDay(parseISO(t.completedAt as string), timelineDate)
+        completedTimeSlot: t.completedAt && !isNaN(Date.parse(t.completedAt)) && isSameDay(parseISO(t.completedAt as string), timelineDate)
           ? new Date(t.completedAt).getHours()
           : undefined
       })),
@@ -375,7 +376,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
               ) : (
                 <Button size="sm" className="gap-2" onClick={() => {
                   const newItem: TrackerItem = {
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: crypto.randomUUID(),
                     name: 'New Task Item',
                     date: format(new Date(), 'yyyy-MM-dd'),
                     type: 'Task',
@@ -653,8 +654,8 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                             <td key="name" className="px-6 py-4 text-sm">
                               <input
                                 className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-1 rounded font-medium w-full"
-                                defaultValue={item.name}
-                                onBlur={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, name: e.target.value } : t))}
+                                value={item.name}
+                                onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, name: e.target.value } : t))}
                               />
                             </td>
                           );
@@ -664,7 +665,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                               <input
                                 type="date"
                                 className="bg-transparent focus:outline-none focus:bg-white focus:ring-1 ring-gray-200 px-2 py-1 rounded text-sm text-gray-600"
-                                value={item.date}
+                                value={item.date || ''}
                                 onChange={(e) => setTracker(tracker.map(t => t.id === item.id ? { ...t, date: e.target.value } : t))}
                               />
                             </td>
@@ -760,6 +761,9 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                           return (
                             <td key="actions" className="px-6 py-4 text-sm">
                               <div className="flex gap-1">
+                                <button onClick={() => { setUploadTargetId(item.id); fileInputRef.current?.click(); }} className="text-gray-300 hover:text-brand-accent transition-colors" title="Attach file">
+                                  <Paperclip size={14} />
+                                </button>
                                 {setFocusMode && (
                                   <button onClick={() => setFocusMode({ active: true, taskName: item.name, duration: 25, timeLeft: 25 * 60, timerActive: false })} className="text-gray-300 hover:text-brand-accent transition-colors" title="Focus mode">
                                     <Clock size={14} />
@@ -848,7 +852,7 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
                 className="w-full mt-2 text-gray-400 hover:text-brand-accent hover:bg-white dashed border border-transparent hover:border-gray-200"
                 onClick={() => {
                   const newItem: TrackerItem = {
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: crypto.randomUUID(),
                     name: 'New ' + status.replace('_', ' ') + ' Item',
                     date: format(new Date(), 'yyyy-MM-dd'),
                     type: 'Task',
@@ -949,17 +953,16 @@ const TrackerSection = ({ tracker, setTracker, session, team, setFocusMode, setC
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];
-          if (file) {
+          if (file && uploadTargetId) {
             try {
               const res = await trackerAPI.upload(file);
-              if (tracker.length > 0) {
-                setTracker(tracker.map((t, idx) => idx === 0 ? { ...t, attachment: res.data.attachment } : t));
-              }
+              setTracker(tracker.map(t => t.id === uploadTargetId ? { ...t, attachment: res.data.attachment } : t));
             } catch (err) {
               console.error('Upload failed:', err);
             }
           }
           e.target.value = '';
+          setUploadTargetId(null);
         }}
       />
 

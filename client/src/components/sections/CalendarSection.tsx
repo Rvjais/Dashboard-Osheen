@@ -86,7 +86,25 @@ const CalendarSection = ({ contentCalendar, setContentCalendar, tracker = [], se
       {viewMode === 'list' ? (
         <Card title="All Items" subtitle="Upcoming and past events">
           <div className="space-y-2">
-            <p className="text-sm text-gray-400 py-8 text-center">Switch to calendar view to manage items.</p>
+            {contentCalendar.length > 0 ? (
+              contentCalendar.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-2 h-2 rounded-full shrink-0", item.stage === 'published' ? 'bg-emerald-400' : item.stage === 'in_progress' ? 'bg-blue-400' : 'bg-amber-400')} />
+                    <div>
+                      <span className="text-sm font-bold text-gray-900">{item.title}</span>
+                      <span className="text-xs text-gray-400 ml-3">{format(parseISO(item.publishDate), 'MMM d, yyyy')}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded bg-gray-100 text-gray-500">{item.platform}</span>
+                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded bg-gray-100 text-gray-500">{item.stage}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-400 py-8 text-center">No content items yet.</p>
+            )}
           </div>
         </Card>
       ) : (
@@ -225,7 +243,7 @@ const CalendarSection = ({ contentCalendar, setContentCalendar, tracker = [], se
                </span>
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-1">{viewEvent.title}</h3>
-            <p className="text-sm text-gray-500 mb-6">{format(parseISO(viewEvent.date), 'MMMM d, yyyy')}</p>
+            <p className="text-sm text-gray-500 mb-6">{viewEvent.date ? format(parseISO(viewEvent.date), 'MMMM d, yyyy') : 'No date'}</p>
             
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
               <Button variant="danger" className="w-full gap-2 justify-center" onClick={handleDeleteEvent}>

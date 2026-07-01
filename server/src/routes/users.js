@@ -70,10 +70,10 @@ router.put('/profile', auth, async (req, res) => {
     const { name, mood, capacity, status, avatar } = req.body;
 
     await req.user.update({
-      name: name || req.user.name,
-      mood: mood || req.user.mood,
+      name: name !== undefined ? name : req.user.name,
+      mood: mood !== undefined ? mood : req.user.mood,
       capacity: capacity !== undefined ? capacity : req.user.capacity,
-      status: status || req.user.status,
+      status: status !== undefined ? status : req.user.status,
       avatar: avatar !== undefined ? avatar : req.user.avatar
     });
 

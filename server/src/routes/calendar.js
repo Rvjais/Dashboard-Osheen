@@ -1,13 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const { OAuth2Client } = require('google-auth-library');
 const { auth } = require('../middleware/auth');
 const { User } = require('../models');
 const { google } = require('googleapis');
 
+const createClient = () => new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
 // Get Google Calendar auth URL
 router.get('/auth-url', auth, async (req, res) => {
   try {
-    const { client } = require('../middleware/google');
+    const client = createClient();
     const authUrl = client.generateAuthUrl({
       access_type: 'offline',
       scope: [
@@ -34,9 +41,8 @@ router.post('/callback', auth, async (req, res) => {
       return res.status(400).json({ error: 'Authorization code required' });
     }
 
-    const { client } = require('../middleware/google');
+    const client = createClient();
     const { tokens } = await client.getToken(code);
-    client.setCredentials(tokens);
 
     // Store refresh token
     if (tokens.refresh_token) {
@@ -61,8 +67,14 @@ router.get('/events', auth, async (req, res) => {
       return res.status(400).json({ error: 'Calendar not connected' });
     }
 
-    const { client } = require('../middleware/google');
-    const tokens = JSON.parse(user.googleAccessToken);
+    let tokens;
+    try {
+      tokens = JSON.parse(user.googleAccessToken);
+    } catch {
+      return res.status(400).json({ error: 'Invalid stored calendar token' });
+    }
+
+    const client = createClient();
     client.setCredentials(tokens);
 
     const calendar = google.calendar({ version: 'v3', auth: client });

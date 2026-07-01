@@ -13,6 +13,7 @@ interface ToolsSectionProps {
 const ToolsSection = ({ tools, setTools }: ToolsSectionProps) => {
   const categories = Array.from(new Set(tools.map(t => t.category)));
   const [toolNamePrompt, setToolNamePrompt] = useState(false);
+  const [toolUrlPrompt, setToolUrlPrompt] = useState(false);
   const [pendingToolName, setPendingToolName] = useState('');
 
   return (
@@ -80,21 +81,31 @@ const ToolsSection = ({ tools, setTools }: ToolsSectionProps) => {
 
       <PromptDialog
         open={toolNamePrompt}
-        onClose={() => setToolNamePrompt(false)}
+        onClose={() => { setToolNamePrompt(false); setPendingToolName(''); }}
         onSubmit={(name) => {
           setPendingToolName(name);
-          const url = prompt("Enter tool URL (https://...):");
-          if (url) {
-            let domain = url;
-            try {
-              domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
-            } catch (e) {}
-            const iconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            setTools([...tools, { id: crypto.randomUUID(), name, url, icon: iconUrl, category: 'Custom Tools' }]);
-          }
+          setToolNamePrompt(false);
+          setToolUrlPrompt(true);
         }}
         title="Add Custom Tool"
         placeholder="Enter tool name..."
+      />
+
+      <PromptDialog
+        open={toolUrlPrompt}
+        onClose={() => { setToolUrlPrompt(false); setPendingToolName(''); }}
+        onSubmit={(url) => {
+          let domain = url;
+          try {
+            domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+          } catch (e) {}
+          const iconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+          setTools([...tools, { id: crypto.randomUUID(), name: pendingToolName, url, icon: iconUrl, category: 'Custom Tools' }]);
+          setPendingToolName('');
+          setToolUrlPrompt(false);
+        }}
+        title="Enter Tool URL"
+        placeholder="https://..."
       />
     </div>
   );

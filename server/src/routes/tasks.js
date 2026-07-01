@@ -3,11 +3,15 @@ const router = express.Router();
 const { Task } = require('../models');
 const { auth } = require('../middleware/auth');
 
-// Get all tasks for current user (created by or assigned to)
+// Get all tasks
 router.get('/', auth, async (req, res) => {
   try {
+    const where = {};
+    if (req.user.role !== 'admin') {
+      where.userId = req.userId;
+    }
     const tasks = await Task.findAll({
-      where: { userId: req.userId },
+      where,
       order: [['createdAt', 'DESC']]
     });
     res.json({ tasks });
@@ -60,7 +64,7 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id, userId: req.userId }
+      where: { id: req.params.id, [require('sequelize').Op.or]: [{ userId: req.userId }, { assigneeId: req.userId }] }
     });
 
     if (!task) {
@@ -88,7 +92,7 @@ router.put('/:id', auth, async (req, res) => {
 router.patch('/:id/toggle', auth, async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id, userId: req.userId }
+      where: { id: req.params.id, [require('sequelize').Op.or]: [{ userId: req.userId }, { assigneeId: req.userId }] }
     });
 
     if (!task) {
@@ -108,7 +112,7 @@ router.patch('/:id/toggle', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id, userId: req.userId }
+      where: { id: req.params.id, [require('sequelize').Op.or]: [{ userId: req.userId }, { assigneeId: req.userId }] }
     });
 
     if (!task) {
@@ -134,7 +138,7 @@ router.post('/bulk-delete', auth, async (req, res) => {
     }
 
     await Task.destroy({
-      where: { id: ids, userId: req.userId }
+      where: { id: ids, [require('sequelize').Op.or]: [{ userId: req.userId }, { assigneeId: req.userId }] }
     });
 
     res.json({ message: 'Tasks deleted' });

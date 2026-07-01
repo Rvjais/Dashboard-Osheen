@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, MoreHorizontal, Calendar, Users, Brain, CheckCircle2, FileText, Link as LinkIcon, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import Button from '../ui/Button';
@@ -12,10 +12,16 @@ interface MeetingsSectionProps {
 }
 
 const MeetingsSection = ({ meetingNotes, setMeetingNotes }: MeetingsSectionProps) => {
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(meetingNotes.length > 0 ? meetingNotes[0].id : null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [attendeePrompt, setAttendeePrompt] = useState(false);
   const [linkPrompt, setLinkPrompt] = useState(false);
   const activeNote = meetingNotes.find(n => n.id === activeNoteId) || null;
+
+  useEffect(() => {
+    if (!activeNoteId && meetingNotes.length > 0) {
+      setActiveNoteId(meetingNotes[0].id);
+    }
+  }, [meetingNotes, activeNoteId]);
 
   return (
   <div className="space-y-6">

@@ -38,9 +38,15 @@ export default function Dashboard() {
   const [focusMode, setFocusMode] = useState<{ active: boolean, taskName: string, duration: number, timeLeft: number, timerActive: boolean } | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [syncErrors, setSyncErrors] = useState<string[]>([]);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(() => {
     return localStorage.getItem('taskstudio_sidebar_minimized') === 'true';
   });
+
+  const addSyncError = (msg: string) => {
+    setSyncErrors(prev => [...prev, msg]);
+    setTimeout(() => setSyncErrors(prev => prev.filter(e => e !== msg)), 5000);
+  };
 
   const toggleSidebar = () => {
     const newState = !isSidebarMinimized;
@@ -91,21 +97,33 @@ export default function Dashboard() {
   });
   const setTracker = (newTracker: any) => {
      const updated = typeof newTracker === 'function' ? newTracker(tracker) : newTracker;
+     const previousTracker = queryClient.getQueryData(['tracker']);
      queryClient.setQueryData(['tracker'], updated);
+
+     const rollback = () => {
+       queryClient.setQueryData(['tracker'], previousTracker);
+       addSyncError('Tracker sync failed — changes reverted');
+     };
      
-     if (updated.length > tracker.length) {
-        const added = updated.filter((t: any) => !tracker.some((old: any) => old.id === t.id));
-        added.forEach((a: any) => trackerMutation.mutate({ action: 'create', data: a }));
-     } else if (updated.length < tracker.length) {
-        const deleted = tracker.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        deleted.forEach((d: any) => trackerMutation.mutate({ action: 'delete', id: d.id }));
-     } else {
-        const changed = updated.filter((t: any) => {
-           const old = tracker.find((o: any) => o.id === t.id);
-           return old && JSON.stringify(old) !== JSON.stringify(t);
-        });
-        changed.forEach((c: any) => trackerMutation.mutate({ action: 'update', id: c.id, data: c }));
-     }
+     const added = updated.filter((t: any) => !tracker.some((old: any) => old.id === t.id));
+     const deleted = tracker.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+     const changed = updated.filter((t: any) => {
+        const old = tracker.find((o: any) => o.id === t.id);
+        return old && JSON.stringify(old) !== JSON.stringify(t);
+     });
+
+     added.forEach((a: any) => trackerMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => trackerMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
+     changed.forEach((c: any) => trackerMutation.mutate(
+       { action: 'update', id: c.id, data: c },
+       { onError: rollback }
+     ));
   };
 
   // Tasks
@@ -122,28 +140,43 @@ export default function Dashboard() {
   });
   const setTasks = (newTasks: any) => {
      const updated = typeof newTasks === 'function' ? newTasks(tasks) : newTasks;
+     const previousTasks = queryClient.getQueryData(['tasks']);
      queryClient.setQueryData(['tasks'], updated);
+
+     const rollback = () => {
+       queryClient.setQueryData(['tasks'], previousTasks);
+       addSyncError('Tasks sync failed — changes reverted');
+     };
      
-     if (updated.length > tasks.length) {
-        const added = updated.filter((t: any) => !tasks.some((old: any) => old.id === t.id));
-        added.forEach((a: any) => tasksMutation.mutate({ action: 'create', data: a }));
-     } else if (updated.length < tasks.length) {
-        const deleted = tasks.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        deleted.forEach((d: any) => tasksMutation.mutate({ action: 'delete', id: d.id }));
-     } else {
-        const changed = updated.filter((t: any) => {
-           const old = tasks.find((o: any) => o.id === t.id);
-           return old && (old.done !== t.done || old.title !== t.title || old.priority !== t.priority);
-        });
-        changed.forEach((c: any) => {
-           const old = tasks.find((o: any) => o.id === c.id);
-           if (old && old.done !== c.done) {
-              tasksMutation.mutate({ action: 'toggle', id: c.id });
-           } else {
-              tasksMutation.mutate({ action: 'update', id: c.id, data: c });
-           }
-        });
-     }
+     const added = updated.filter((t: any) => !tasks.some((old: any) => old.id === t.id));
+     const deleted = tasks.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+     const changed = updated.filter((t: any) => {
+        const old = tasks.find((o: any) => o.id === t.id);
+        return old && (old.done !== t.done || old.title !== t.title || old.priority !== t.priority);
+     });
+
+     added.forEach((a: any) => tasksMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => tasksMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
+     changed.forEach((c: any) => {
+        const old = tasks.find((o: any) => o.id === c.id);
+        if (old && old.done !== c.done) {
+           tasksMutation.mutate(
+             { action: 'toggle', id: c.id },
+             { onError: rollback }
+           );
+        } else {
+           tasksMutation.mutate(
+             { action: 'update', id: c.id, data: c },
+             { onError: rollback }
+           );
+        }
+     });
   };
 
   // Meetings
@@ -159,21 +192,33 @@ export default function Dashboard() {
   });
   const setMeetingNotes = (newMeetings: any) => {
      const updated = typeof newMeetings === 'function' ? newMeetings(meetingNotes) : newMeetings;
+     const previousMeetings = queryClient.getQueryData(['meetings']);
      queryClient.setQueryData(['meetings'], updated);
+
+     const rollback = () => {
+       queryClient.setQueryData(['meetings'], previousMeetings);
+       addSyncError('Meetings sync failed — changes reverted');
+     };
      
-     if (updated.length > meetingNotes.length) {
-        const added = updated.filter((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
-        added.forEach((a: any) => meetingsMutation.mutate({ action: 'create', data: a }));
-     } else if (updated.length < meetingNotes.length) {
-        const deleted = meetingNotes.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        deleted.forEach((d: any) => meetingsMutation.mutate({ action: 'delete', id: d.id }));
-     } else {
-        const changed = updated.filter((t: any) => {
-           const old = meetingNotes.find((o: any) => o.id === t.id);
-           return old && JSON.stringify(old) !== JSON.stringify(t);
-        });
-        changed.forEach((c: any) => meetingsMutation.mutate({ action: 'update', id: c.id, data: c }));
-     }
+     const added = updated.filter((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
+     const deleted = meetingNotes.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+     const changed = updated.filter((t: any) => {
+        const old = meetingNotes.find((o: any) => o.id === t.id);
+        return old && JSON.stringify(old) !== JSON.stringify(t);
+     });
+
+     added.forEach((a: any) => meetingsMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => meetingsMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
+     changed.forEach((c: any) => meetingsMutation.mutate(
+       { action: 'update', id: c.id, data: c },
+       { onError: rollback }
+     ));
   };
 
   // Tools
@@ -188,14 +233,25 @@ export default function Dashboard() {
   });
   const setTools = (newTools: any) => {
      const updated = typeof newTools === 'function' ? newTools(tools) : newTools;
+     const previousTools = queryClient.getQueryData(['tools']);
      queryClient.setQueryData(['tools'], updated);
-     if (updated.length > tools.length) {
-        const added = updated.find((t: any) => !tools.some((old: any) => old.id === t.id));
-        if (added) toolsMutation.mutate({ action: 'create', data: added });
-     } else if (updated.length < tools.length) {
-        const deleted = tools.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) toolsMutation.mutate({ action: 'delete', id: deleted.id });
-     }
+
+     const rollback = () => {
+       queryClient.setQueryData(['tools'], previousTools);
+       addSyncError('Tools sync failed — changes reverted');
+     };
+
+     const added = updated.filter((t: any) => !tools.some((old: any) => old.id === t.id));
+     const deleted = tools.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+
+     added.forEach((a: any) => toolsMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => toolsMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
   };
 
   // Ideas
@@ -210,14 +266,25 @@ export default function Dashboard() {
   });
   const setIdeas = (newIdeas: any) => {
      const updated = typeof newIdeas === 'function' ? newIdeas(ideas) : newIdeas;
+     const previousIdeas = queryClient.getQueryData(['ideas']);
      queryClient.setQueryData(['ideas'], updated);
-     if (updated.length > ideas.length) {
-        const added = updated.find((t: any) => !ideas.some((old: any) => old.id === t.id));
-        if (added) ideasMutation.mutate({ action: 'create', data: added });
-     } else if (updated.length < ideas.length) {
-        const deleted = ideas.find((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        if (deleted) ideasMutation.mutate({ action: 'delete', id: deleted.id });
-     }
+
+     const rollback = () => {
+       queryClient.setQueryData(['ideas'], previousIdeas);
+       addSyncError('Ideas sync failed — changes reverted');
+     };
+
+     const added = updated.filter((t: any) => !ideas.some((old: any) => old.id === t.id));
+     const deleted = ideas.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+
+     added.forEach((a: any) => ideasMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => ideasMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
   };
 
   // Content
@@ -233,20 +300,33 @@ export default function Dashboard() {
   });
   const setContentCalendar = (newContent: any) => {
      const updated = typeof newContent === 'function' ? newContent(contentCalendar) : newContent;
+     const previousContent = queryClient.getQueryData(['contentItems']);
      queryClient.setQueryData(['contentItems'], updated);
-     if (updated.length > contentCalendar.length) {
-        const added = updated.filter((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
-        added.forEach((a: any) => contentMutation.mutate({ action: 'create', data: a }));
-     } else if (updated.length < contentCalendar.length) {
-        const deleted = contentCalendar.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
-        deleted.forEach((d: any) => contentMutation.mutate({ action: 'delete', id: d.id }));
-     } else {
-        const changed = updated.filter((t: any) => {
-           const old = contentCalendar.find((o: any) => o.id === t.id);
-           return old && JSON.stringify(old) !== JSON.stringify(t);
-        });
-        changed.forEach((c: any) => contentMutation.mutate({ action: 'update', id: c.id, data: c }));
-     }
+
+     const rollback = () => {
+       queryClient.setQueryData(['contentItems'], previousContent);
+       addSyncError('Content sync failed — changes reverted');
+     };
+     
+     const added = updated.filter((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
+     const deleted = contentCalendar.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
+     const changed = updated.filter((t: any) => {
+        const old = contentCalendar.find((o: any) => o.id === t.id);
+        return old && JSON.stringify(old) !== JSON.stringify(t);
+     });
+
+     added.forEach((a: any) => contentMutation.mutate(
+       { action: 'create', data: a },
+       { onError: rollback }
+     ));
+     deleted.forEach((d: any) => contentMutation.mutate(
+       { action: 'delete', id: d.id },
+       { onError: rollback }
+     ));
+     changed.forEach((c: any) => contentMutation.mutate(
+       { action: 'update', id: c.id, data: c },
+       { onError: rollback }
+     ));
   };
 
   // Local storage states
@@ -474,6 +554,17 @@ export default function Dashboard() {
           hasUnreadNotifications={notifs.length > 0 && notifs[0].id !== '0'} 
         />
         
+        {/* Sync Error Indicator */}
+        {syncErrors.length > 0 && (
+          <div className="fixed top-4 right-4 z-[9999] space-y-2">
+            {syncErrors.map((err, i) => (
+              <div key={i} className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-top-2">
+                ⚠️ {err}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Page Content */}
         <div className="flex-1 p-8 max-w-[1600px] w-full mx-auto overflow-y-auto">
           <AnimatePresence mode="wait">
