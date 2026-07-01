@@ -88,11 +88,12 @@ const LoginPage = () => {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError('Google login failed')}
-              useOneTap
               theme="outline"
               size="large"
               shape="rectangular"
               width="100%"
+              type="standard"
+              text="signin_with"
             />
           )}
         </div>
