@@ -81,7 +81,7 @@ const ToolsSection = ({ tools, setTools }: ToolsSectionProps) => {
 
       <PromptDialog
         open={toolNamePrompt}
-        onClose={() => { setToolNamePrompt(false); setPendingToolName(''); }}
+        onClose={() => setToolNamePrompt(false)}
         onSubmit={(name) => {
           setPendingToolName(name);
           setToolNamePrompt(false);
