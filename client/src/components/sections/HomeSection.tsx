@@ -60,8 +60,8 @@ const HomeSection = ({
     switch (id) {
       case 'welcome': return <WelcomeWidget session={session} dailyBrief={dailyBrief} updateMood={updateMood} dayScore={dayScore} />;
       case 'clock': return <ClockWidget currentTime={currentTime} team={team} />;
-      case 'stats': return <StatsWidget tasks={tasks} meetingNotes={meetingNotes} ideas={ideas} />;
-      case 'schedule': return <ScheduleWidget meetingNotes={meetingNotes} tracker={tracker} />;
+      case 'stats': return <StatsWidget tasks={tasks} meetingNotes={meetingNotes} ideas={ideas} tracker={tracker} />;
+      case 'schedule': return <ScheduleWidget meetingNotes={meetingNotes} tracker={tracker} tasks={tasks} />;
       case 'tasks': return <TasksWidget tracker={tracker} setTracker={setTracker} />;
       case 'ideas': return <IdeasWidget ideas={ideas} setIdeas={setIdeas} />;
       default: return null;

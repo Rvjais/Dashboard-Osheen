@@ -1,12 +1,13 @@
 import Card from '../ui/Card';
-import { MeetingNote, TrackerItem, TaskStatus } from '../../types';
+import { MeetingNote, TrackerItem, Task, TaskStatus } from '../../types';
 
 interface ScheduleWidgetProps {
   meetingNotes: MeetingNote[];
   tracker: TrackerItem[];
+  tasks: Task[];
 }
 
-const ScheduleWidget = ({ meetingNotes, tracker }: ScheduleWidgetProps) => {
+const ScheduleWidget = ({ meetingNotes, tracker, tasks }: ScheduleWidgetProps) => {
   const todayStr = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
   
   const todayItems = [
@@ -15,7 +16,10 @@ const ScheduleWidget = ({ meetingNotes, tracker }: ScheduleWidgetProps) => {
       .map((m: MeetingNote) => ({ label: `Meeting: ${m.title}`, type: 'meeting' })),
     ...tracker
       .filter((t: TrackerItem) => t.date === todayStr && t.status !== TaskStatus.DONE)
-      .map((t: TrackerItem) => ({ label: `Task: ${t.name}`, type: 'task' }))
+      .map((t: TrackerItem) => ({ label: `Task: ${t.name}`, type: 'task' })),
+    ...tasks
+      .filter((t: Task) => t.dueDate === todayStr && !t.done)
+      .map((t: Task) => ({ label: `Task: ${t.title}`, type: 'task' }))
   ];
 
   return (
