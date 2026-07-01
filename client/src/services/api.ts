@@ -32,13 +32,20 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and misconfiguration detection
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       clearAuth();
       window.location.href = '/login';
+    }
+    const responseData = error.response?.data;
+    if (typeof responseData === 'string' && responseData.includes('<!DOCTYPE html>')) {
+      console.error(
+        '%c[API] Got HTML instead of JSON. Check VITE_API_URL or vercel.json rewrites.',
+        'color: red; font-weight: bold;'
+      );
     }
     return Promise.reject(error);
   }

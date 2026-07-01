@@ -48,6 +48,13 @@ export default function Dashboard() {
     setTimeout(() => setSyncErrors(prev => prev.filter(e => e !== msg)), 5000);
   };
 
+  const getErrorSuffix = (err: any): string => {
+    if (!err?.response) return 'Server unreachable — check backend is running';
+    if (typeof err.response?.data === 'string' && err.response.data.includes('<!DOCTYPE html>')) return 'API misconfigured — check vercel.json rewrite';
+    if (err.response?.status >= 500) return `Server error — ${err.response?.data?.error || 'unknown'}`;
+    return 'sync failed — changes reverted';
+  };
+
   const toggleSidebar = () => {
     const newState = !isSidebarMinimized;
     setIsSidebarMinimized(newState);
@@ -100,12 +107,12 @@ export default function Dashboard() {
      const previousTracker = queryClient.getQueryData(['tracker']);
      queryClient.setQueryData(['tracker'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['tracker'], previousTracker);
-       addSyncError('Tracker sync failed — changes reverted');
-     };
-     
-     const added = updated.filter((t: any) => !tracker.some((old: any) => old.id === t.id));
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['tracker'], previousTracker);
+        addSyncError(`Tracker ${getErrorSuffix(err)}`);
+      };
+      
+      const added = updated.filter((t: any) => !tracker.some((old: any) => old.id === t.id));
      const deleted = tracker.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
      const changed = updated.filter((t: any) => {
         const old = tracker.find((o: any) => o.id === t.id);
@@ -143,12 +150,12 @@ export default function Dashboard() {
      const previousTasks = queryClient.getQueryData(['tasks']);
      queryClient.setQueryData(['tasks'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['tasks'], previousTasks);
-       addSyncError('Tasks sync failed — changes reverted');
-     };
-     
-     const added = updated.filter((t: any) => !tasks.some((old: any) => old.id === t.id));
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['tasks'], previousTasks);
+        addSyncError(`Tasks ${getErrorSuffix(err)}`);
+      };
+      
+      const added = updated.filter((t: any) => !tasks.some((old: any) => old.id === t.id));
      const deleted = tasks.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
      const changed = updated.filter((t: any) => {
         const old = tasks.find((o: any) => o.id === t.id);
@@ -195,12 +202,12 @@ export default function Dashboard() {
      const previousMeetings = queryClient.getQueryData(['meetings']);
      queryClient.setQueryData(['meetings'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['meetings'], previousMeetings);
-       addSyncError('Meetings sync failed — changes reverted');
-     };
-     
-     const added = updated.filter((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['meetings'], previousMeetings);
+        addSyncError(`Meetings ${getErrorSuffix(err)}`);
+      };
+      
+      const added = updated.filter((t: any) => !meetingNotes.some((old: any) => old.id === t.id));
      const deleted = meetingNotes.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
      const changed = updated.filter((t: any) => {
         const old = meetingNotes.find((o: any) => o.id === t.id);
@@ -236,12 +243,12 @@ export default function Dashboard() {
      const previousTools = queryClient.getQueryData(['tools']);
      queryClient.setQueryData(['tools'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['tools'], previousTools);
-       addSyncError('Tools sync failed — changes reverted');
-     };
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['tools'], previousTools);
+        addSyncError(`Tools ${getErrorSuffix(err)}`);
+      };
 
-     const added = updated.filter((t: any) => !tools.some((old: any) => old.id === t.id));
+      const added = updated.filter((t: any) => !tools.some((old: any) => old.id === t.id));
      const deleted = tools.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
 
      added.forEach((a: any) => toolsMutation.mutate(
@@ -269,12 +276,12 @@ export default function Dashboard() {
      const previousIdeas = queryClient.getQueryData(['ideas']);
      queryClient.setQueryData(['ideas'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['ideas'], previousIdeas);
-       addSyncError('Ideas sync failed — changes reverted');
-     };
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['ideas'], previousIdeas);
+        addSyncError(`Ideas ${getErrorSuffix(err)}`);
+      };
 
-     const added = updated.filter((t: any) => !ideas.some((old: any) => old.id === t.id));
+      const added = updated.filter((t: any) => !ideas.some((old: any) => old.id === t.id));
      const deleted = ideas.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
 
      added.forEach((a: any) => ideasMutation.mutate(
@@ -303,12 +310,12 @@ export default function Dashboard() {
      const previousContent = queryClient.getQueryData(['contentItems']);
      queryClient.setQueryData(['contentItems'], updated);
 
-     const rollback = () => {
-       queryClient.setQueryData(['contentItems'], previousContent);
-       addSyncError('Content sync failed — changes reverted');
-     };
-     
-     const added = updated.filter((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
+      const rollback = (err: any) => {
+        queryClient.setQueryData(['contentItems'], previousContent);
+        addSyncError(`Content ${getErrorSuffix(err)}`);
+      };
+      
+      const added = updated.filter((t: any) => !contentCalendar.some((old: any) => old.id === t.id));
      const deleted = contentCalendar.filter((t: any) => !updated.some((newT: any) => newT.id === t.id));
      const changed = updated.filter((t: any) => {
         const old = contentCalendar.find((o: any) => o.id === t.id);
