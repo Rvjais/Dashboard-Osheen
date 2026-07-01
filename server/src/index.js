@@ -137,6 +137,13 @@ const startServer = async () => {
       // Column already exists — ignore
     }
 
+    // Add progress column to tracker_items if it doesn't exist
+    try {
+      await sequelize.query('ALTER TABLE tracker_items ADD COLUMN progress INTEGER DEFAULT 0;');
+    } catch (e) {
+      // Column already exists — ignore
+    }
+
     // Add avatar column to users if it doesn't exist
     try {
       await sequelize.query('ALTER TABLE users ADD COLUMN avatar VARCHAR(255);');
