@@ -39,17 +39,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 });
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20, // stricter limit for auth endpoints
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many login attempts, please try again later.' }
-});
 app.use('/api', apiLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
 
 // Request logging
 app.use((req, res, next) => {
