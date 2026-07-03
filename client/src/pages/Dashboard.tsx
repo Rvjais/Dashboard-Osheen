@@ -26,6 +26,7 @@ import MeetingsSection from "../components/sections/MeetingsSection";
 import ToolsSection from "../components/sections/ToolsSection";
 import MessagesSection from "../components/sections/MessagesSection";
 import KrasSection from "../components/sections/KrasSection";
+import IncompleteTasksSection from "../components/sections/IncompleteTasksSection";
 
 export default function Dashboard() {
   // --- States ---
@@ -477,6 +478,7 @@ export default function Dashboard() {
         />
       );
       case Section.TRACKER: return <TrackerSection tracker={tracker} setTracker={setTracker} session={session} team={team} setFocusMode={setFocusMode} setCurrentSection={setCurrentSection} />;
+      case Section.INCOMPLETE_TASKS: return <IncompleteTasksSection tracker={tracker} setTracker={setTracker} session={session} team={team} />;
       case Section.CALENDAR: return <CalendarSection contentCalendar={contentCalendar} setContentCalendar={setContentCalendar} tracker={tracker} setTracker={setTracker} meetingNotes={meetingNotes} setMeetingNotes={setMeetingNotes} session={session} />;
 
       case Section.REPORTS: return <ReportsSection team={team} tasks={tasks} />;
@@ -511,9 +513,20 @@ export default function Dashboard() {
     const todayTrackerTasks = tracker.filter((t: any) => t.status !== 'done' && t.date === todayStr);
     if (todayTrackerTasks.length > 0) notificationsList.push({ id: 'tt2', title: 'Tasks Due Today', time: 'Today', msg: `You have ${todayTrackerTasks.length} tasks to complete today.`, type: 'alert' });
 
-    // Periodic reminder (e.g. if it's past 12 PM or 3 PM and tasks are still incomplete)
-    if (now.getHours() >= 12 && todayTrackerTasks.length > 0) {
-      notificationsList.push({ id: 'rem1', title: 'Pending Tasks Reminder', time: 'Just now', msg: `Don't forget! You still have ${todayTrackerTasks.length} tasks to finish today.`, type: 'alert' });
+    // Periodic reminder every 3 hours about pending tasks with day count
+    if (now.getHours() % 3 === 0) {
+      const allIncomplete = tracker.filter((t: any) => t.status !== 'done');
+      if (allIncomplete.length > 0) {
+        let maxDays = 0;
+        allIncomplete.forEach((t: any) => {
+          if (t.date) {
+            const diff = Math.floor((now.getTime() - new Date(t.date).getTime()) / (1000 * 60 * 60 * 24));
+            if (diff > maxDays) maxDays = diff;
+          }
+        });
+        const dayLabel = maxDays > 0 ? ` (oldest is ${maxDays} day${maxDays > 1 ? 's' : ''} overdue)` : '';
+        notificationsList.push({ id: 'rem3h', title: 'Pending Tasks Reminder', time: 'Every 3h', msg: `${allIncomplete.length} task${allIncomplete.length > 1 ? 's' : ''} still pending${dayLabel}`, type: 'alert' });
+      }
     }
 
     const todayMeetings = meetingNotes.filter((m: any) => m.date === todayStr || (m.date && m.date.startsWith(todayStr)));

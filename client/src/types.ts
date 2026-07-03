@@ -6,6 +6,7 @@ export enum Role {
 export enum Section {
   HOME = 'home',
   TRACKER = 'tracker',
+  INCOMPLETE_TASKS = 'incomplete_tasks',
   CALENDAR = 'calendar',
   TEAM = 'team',
   MEETINGS = 'meetings',

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Table, Calendar, FileText, BarChart2, Grid, Users, LogOut, MessageSquare, Target, Menu } from 'lucide-react';
+import { Home, Table, Calendar, FileText, BarChart2, Grid, Users, LogOut, MessageSquare, Target, Menu, AlertTriangle } from 'lucide-react';
 import { cn, formatBytes } from '../../lib/utils';
 import { Section, Role, User } from '../../types';
 
@@ -16,6 +16,7 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { id: Section.HOME, label: 'Home', icon: Home },
   { id: Section.TRACKER, label: 'Tracker', icon: Table },
+  { id: Section.INCOMPLETE_TASKS, label: 'Incomplete', icon: AlertTriangle },
   { id: Section.KRAS, label: "KRA's", icon: Target },
   { id: Section.CALENDAR, label: 'Calendar', icon: Calendar },
   { id: Section.MESSAGES, label: 'Messages', icon: MessageSquare },
