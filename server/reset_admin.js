@@ -1,14 +1,17 @@
 const { User } = require('./src/models');
-const bcrypt = require('bcryptjs');
 
 async function reset() {
-  const admin = await User.findOne({ where: { email: 'admin@taskstudio.com' } });
-  if (admin) {
+  const [admin, created] = await User.findOrCreate({
+    where: { email: 'admin@taskstudio.com' },
+    defaults: { name: 'Admin', password: 'password123', role: 'admin' }
+  });
+  if (!created) {
     admin.password = 'password123';
     await admin.save();
     console.log('Admin password reset to: password123');
   } else {
-    console.log('Admin user not found');
+    console.log('Admin user created (email: admin@taskstudio.com, password: password123)');
   }
+  process.exit(0);
 }
-reset();
+reset().catch(err => { console.error(err); process.exit(1); });
